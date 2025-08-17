@@ -1,0 +1,37 @@
+-- First, clear existing players
+TRUNCATE TABLE public.players;
+
+-- Insert new players with Minecraft avatars
+INSERT INTO public.players (id, name, "kitTiers", avatar) VALUES
+  ('player-1', 'Sycthy', '{}'::jsonb, 'https://mc-heads.net/avatar/Sycthy'),
+  ('player-2', 'Ellies V', '{}'::jsonb, 'https://mc-heads.net/avatar/Ellies_V'),
+  ('player-3', 'Wido', '{}'::jsonb, 'https://mc-heads.net/avatar/Wido'),
+  ('player-4', 'Neo H', '{}'::jsonb, 'https://mc-heads.net/avatar/Neo_H'),
+  ('player-5', 'Rexo', '{}'::jsonb, 'https://mc-heads.net/avatar/Rexo'),
+  ('player-6', 'Evo', '{}'::jsonb, 'https://mc-heads.net/avatar/Evo'),
+  ('player-7', 'Darky', '{}'::jsonb, 'https://mc-heads.net/avatar/Darky'),
+  ('player-8', 'Blom', '{}'::jsonb, 'https://mc-heads.net/avatar/Blom'),
+  ('player-9', 'Blazo', '{}'::jsonb, 'https://mc-heads.net/avatar/Blazo'),
+  ('player-10', 'Spectro', '{}'::jsonb, 'https://mc-heads.net/avatar/Spectro'),
+  ('player-11', 'Doni', '{}'::jsonb, 'https://mc-heads.net/avatar/Doni'),
+  ('player-12', 'Reterno', '{}'::jsonb, 'https://mc-heads.net/avatar/Reterno'),
+  ('player-13', 'Kelk', '{}'::jsonb, 'https://mc-heads.net/avatar/Kelk'),
+  ('player-14', 'Me', '{}'::jsonb, 'https://mc-heads.net/avatar/Me'),
+  ('player-15', 'Yolo', '{}'::jsonb, 'https://mc-heads.net/avatar/Yolo'),
+  ('player-16', 'Big A', '{}'::jsonb, 'https://mc-heads.net/avatar/Big_A'),
+  ('player-17', 'Unded', '{}'::jsonb, 'https://mc-heads.net/avatar/Unded'),
+  ('player-18', 'Unio', '{}'::jsonb, 'https://mc-heads.net/avatar/Unio'),
+  ('player-19', 'Winder', '{}'::jsonb, 'https://mc-heads.net/avatar/Winder'),
+  ('player-20', 'Vran', '{}'::jsonb, 'https://mc-heads.net/avatar/Vran'),
+  ('player-21', 'Crysto', '{}'::jsonb, 'https://mc-heads.net/avatar/Crysto'),
+  ('player-22', 'Morpho', '{}'::jsonb, 'https://mc-heads.net/avatar/Morpho'),
+  ('player-23', 'Void', '{}'::jsonb, 'https://mc-heads.net/avatar/Void'),
+  ('player-24', 'Ravv', '{}'::jsonb, 'https://mc-heads.net/avatar/Ravv'),
+  ('player-25', 'Polo', '{}'::jsonb, 'https://mc-heads.net/avatar/Polo'),
+  ('player-26', 'Retoro', '{}'::jsonb, 'https://mc-heads.net/avatar/Retoro'),
+  ('player-27', 'Rutner', '{}'::jsonb, 'https://mc-heads.net/avatar/Rutner'),
+  ('player-28', 'Raivo', '{}'::jsonb, 'https://mc-heads.net/avatar/Raivo'),
+  ('player-29', 'Tron T', '{}'::jsonb, 'https://mc-heads.net/avatar/Tron_T'),
+  ('player-30', 'Inferno', '{}'::jsonb, 'https://mc-heads.net/avatar/Inferno'),
+  ('player-31', 'Crysteo', '{}'::jsonb, 'https://mc-heads.net/avatar/Crysteo'),
+  ('player-32', 'Jka', '{}'::jsonb, 'https://mc-heads.net/avatar/Jka');
