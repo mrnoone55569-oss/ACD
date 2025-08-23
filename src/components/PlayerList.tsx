@@ -269,13 +269,10 @@ const PlayerList: React.FC = () => {
                   <div className="flex-shrink-0 relative">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
-                        onClick={(e) => handlePlayerReset(player.id, player.name, e)}
-                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200"
-                        title="Reset All Tiers"
+                        onClick={(e) => handleTierClick(player.id, e)}
+                        className="p-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary hover:text-accent-light transition-all duration-200"
+                        title="Edit Tier"
                       >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
                         <Edit3 size={16} />
                       </button>
                       <button
