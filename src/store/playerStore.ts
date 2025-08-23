@@ -15,6 +15,9 @@ interface PlayerState {
   updatePlayerTier: (playerId: string, kit: KitId, tier: TierType) => Promise<void>;
   resetAllRankings: () => Promise<void>;
   initializePlayers: () => Promise<void>;
+  resetPlayerTiers: (playerId: string) => Promise<{ success: boolean; error?: string }>;
+  resetKitForAll: (kitKey: KitId) => Promise<{ success: boolean; affected?: number; error?: string }>;
+  resetAllTiers: () => Promise<{ success: boolean; error?: string }>;
 }
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
@@ -195,6 +198,120 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       set({ 
         error: error instanceof Error ? error.message : 'Failed to reset rankings' 
       });
+    }
+  },
+
+  resetPlayerTiers: async (playerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ 
+          kitTiers: {},
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedPlayers = get().players.map(player => 
+        player.id === playerId 
+          ? { ...player, kitTiers: {} as Record<KitId, TierType> }
+          : player
+      );
+
+      const { searchQuery } = get();
+      const filteredPlayers = searchQuery.trim() === '' 
+        ? updatedPlayers
+        : updatedPlayers.filter(player => 
+            player.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+
+      set({
+        players: updatedPlayers,
+        filteredPlayers
+      });
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reset player tiers'
+      };
+    }
+  },
+
+  resetKitForAll: async (kitKey: KitId) => {
+    try {
+      const { data: affected, error } = await supabase
+        .rpc('reset_kit', { k: kitKey });
+
+      if (error) throw error;
+
+      // Update local state - remove the kit from all players
+      const updatedPlayers = get().players.map(player => {
+        const newKitTiers = { ...player.kitTiers };
+        delete newKitTiers[kitKey];
+        return { ...player, kitTiers: newKitTiers };
+      });
+
+      const { searchQuery } = get();
+      const filteredPlayers = searchQuery.trim() === '' 
+        ? updatedPlayers
+        : updatedPlayers.filter(player => 
+            player.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+
+      set({
+        players: updatedPlayers,
+        filteredPlayers
+      });
+
+      return { success: true, affected: affected || 0 };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reset kit for all players'
+      };
+    }
+  },
+
+  resetAllTiers: async () => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ 
+          kitTiers: {},
+          updated_at: new Date().toISOString()
+        })
+        .neq('id', '0'); // Update all players
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedPlayers = get().players.map(player => ({
+        ...player,
+        kitTiers: {} as Record<KitId, TierType>
+      }));
+
+      const { searchQuery } = get();
+      const filteredPlayers = searchQuery.trim() === '' 
+        ? updatedPlayers
+        : updatedPlayers.filter(player => 
+            player.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+
+      set({
+        players: updatedPlayers,
+        filteredPlayers
+      });
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reset all tiers'
+      };
     }
   }
 }));

@@ -1,21 +1,30 @@
 import React, { useState } from 'react';
 import { usePlayerStore } from '../store/playerStore';
 import { useAuthStore } from '../store/authStore';
+import { useToast } from './ToastContainer';
 import TierSelector from './TierSelector';
 import LoginModal from './LoginModal';
 import PlayerDetailModal from './PlayerDetailModal';
+import ResetConfirmModal from './ResetConfirmModal';
 import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
-import { Edit3, Trophy, Search } from 'lucide-react';
+import { Edit3, Trophy, Search, Trash2 } from 'lucide-react';
 
 const PlayerList: React.FC = () => {
-  const { filteredPlayers, activeKit, updatePlayerTier, searchQuery } = usePlayerStore();
+  const { filteredPlayers, activeKit, updatePlayerTier, resetPlayerTiers, searchQuery } = usePlayerStore();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const { showToast } = useToast();
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [resetModal, setResetModal] = useState<{
+    isOpen: boolean;
+    playerId?: string;
+    playerName?: string;
+  }>({ isOpen: false });
+  const [isResetting, setIsResetting] = useState(false);
   
   const handleTierSelect = (playerId: string, tier: TierType) => {
     if (activeKit !== 'overall') {
@@ -37,6 +46,46 @@ const PlayerList: React.FC = () => {
 
   const handlePlayerClick = (playerId: string) => {
     setSelectedPlayer(playerId);
+  };
+
+  const handlePlayerReset = (playerId: string, playerName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    setResetModal({
+      isOpen: true,
+      playerId,
+      playerName
+    });
+  };
+
+  const handleResetConfirm = async () => {
+    if (!resetModal.playerId) return;
+    
+    setIsResetting(true);
+    try {
+      const result = await resetPlayerTiers(resetModal.playerId);
+      if (result.success) {
+        showToast({
+          type: 'success',
+          title: 'Player Reset Successful',
+          message: `All tiers reset for ${resetModal.playerName}`
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Reset Failed',
+        message: error instanceof Error ? error.message : 'An error occurred'
+      });
+    } finally {
+      setIsResetting(false);
+      setResetModal({ isOpen: false });
+    }
   };
   
   // Calculate points for sorting
@@ -218,12 +267,25 @@ const PlayerList: React.FC = () => {
                 {/* Edit Button (Admin only) */}
                 {activeKit !== 'overall' && isAuthenticated && (
                   <div className="flex-shrink-0 relative">
-                    <button
-                      onClick={(e) => handleTierClick(player.id, e)}
-                      className="p-2 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 hover:text-yellow-300 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                    >
-                      <Edit3 size={16} />
-                    </button>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button
+                        onClick={(e) => handlePlayerReset(player.id, player.name, e)}
+                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200"
+                        title="Reset All Tiers"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => handlePlayerReset(player.id, player.name, e)}
+                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200"
+                        title="Reset All Tiers"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                     {editingPlayer === player.id && (
                       <TierSelector 
                         onSelect={(tier) => handleTierSelect(player.id, tier)}
@@ -248,6 +310,17 @@ const PlayerList: React.FC = () => {
       {showLoginModal && (
         <LoginModal onClose={() => setShowLoginModal(false)} />
       )}
+      
+      <ResetConfirmModal
+        isOpen={resetModal.isOpen}
+        onClose={() => setResetModal({ isOpen: false })}
+        onConfirm={handleResetConfirm}
+        title="Reset Player Tiers"
+        description="This will remove all tier rankings for this player across all kits."
+        type="player"
+        playerName={resetModal.playerName}
+        isLoading={isResetting}
+      />
     </>
   );
 };
