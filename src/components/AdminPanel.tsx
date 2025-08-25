@@ -6,11 +6,6 @@ import { insertInitialPlayers } from '../utils/playerMigration';
 
 import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
 
-
-import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
-
- 
-import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
  
 
 import { KITS } from '../config/kits';
