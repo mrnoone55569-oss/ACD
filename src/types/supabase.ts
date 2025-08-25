@@ -13,7 +13,8 @@ export interface Database {
         Row: {
           id: string
           name: string
-          rankings: Json
+          kitTiers: Json
+          peakTiers: Json | null
           avatar: string | null
           image_url: string | null
           created_at: string
@@ -22,7 +23,8 @@ export interface Database {
         Insert: {
           id?: string
           name: string
-          rankings?: Json
+          kitTiers?: Json
+          peakTiers?: Json | null
           avatar?: string | null
           image_url?: string | null
           created_at?: string
@@ -31,7 +33,8 @@ export interface Database {
         Update: {
           id?: string
           name?: string
-          rankings?: Json
+          kitTiers?: Json
+          peakTiers?: Json | null
           avatar?: string | null
           image_url?: string | null
           created_at?: string
