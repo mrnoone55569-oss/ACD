@@ -112,10 +112,12 @@ const PlayerList: React.FC = () => {
       return KITS.filter(kit => kit.id !== 'overall').map(kit => {
         const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
         const tierConfig = getTierIconConfig(tier);
+        const peakTier = player.peakTiers?.[kit.id as KitId] || tier;
+        const peakLabel = getTierIconConfig(peakTier).label;
         const KitIcon = getKitIcon(kit.id);
-        
+
         return (
-          <div key={kit.id} className="flex flex-col items-center min-w-[60px] group">
+          <div key={kit.id} className="flex flex-col items-center min-w-[60px] group" title={`Peak: ${peakLabel}`}>
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center border-2 mb-2 transition-all duration-200 shadow-lg relative overflow-hidden"
               style={{
@@ -144,10 +146,12 @@ const PlayerList: React.FC = () => {
     } else {
       const tier = player.kitTiers?.[activeKit as KitId] || 'UNRANKED';
       const tierConfig = getTierIconConfig(tier);
+      const peakTier = player.peakTiers?.[activeKit as KitId] || tier;
+      const peakLabel = getTierIconConfig(peakTier).label;
       const KitIcon = getKitIcon(activeKit);
-      
+
       return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" title={`Peak: ${peakLabel}`}>
           <div 
             className="w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all duration-200 shadow-lg relative overflow-hidden"
             style={{

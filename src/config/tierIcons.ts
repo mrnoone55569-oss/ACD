@@ -1,24 +1,25 @@
-import { 
-  Crown, 
-  Trophy, 
-  Medal, 
-  Star, 
-  Diamond, 
-  Gem, 
-  Shield, 
-  Sword, 
-  Target, 
+import {
+  Crown,
+  Trophy,
+  Medal,
+  Star,
+  Diamond,
+  Gem,
+  Shield,
+  Sword,
+  Target,
   Circle,
   Award,
   Zap,
   Flame,
-  Sparkles
+  Sparkles,
+  type LucideIcon
 } from 'lucide-react';
 import { TierType } from '../types';
 
 export interface TierIconConfig {
   id: TierType;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   bgColor: string;
   borderColor: string;
