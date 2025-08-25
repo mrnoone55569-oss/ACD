@@ -17,7 +17,7 @@ interface PlayerState {
   initializePlayers: () => Promise<void>;
   resetPlayerTiers: (playerId: string) => Promise<{ success: boolean; error?: string }>;
   resetKitForAll: (kitKey: KitId) => Promise<{ success: boolean; affected?: number; error?: string }>;
-  resetAllTiers: () => Promise<{ success: boolean; error?: string }>;
+  resetAllTiers: () => Promise<{ success: boolean; affected?: number; error?: string }>;
 }
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
@@ -278,15 +278,17 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   resetAllTiers: async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('players')
-        .update({ 
+        .update({
           kitTiers: {},
           updated_at: new Date().toISOString()
         })
-        .neq('id', '0'); // Update all players
+        .select('id');
 
       if (error) throw error;
+
+      const affected = data?.length || 0;
 
       // Update local state
       const updatedPlayers = get().players.map(player => ({
@@ -295,9 +297,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       }));
 
       const { searchQuery } = get();
-      const filteredPlayers = searchQuery.trim() === '' 
+      const filteredPlayers = searchQuery.trim() === ''
         ? updatedPlayers
-        : updatedPlayers.filter(player => 
+        : updatedPlayers.filter(player =>
             player.name.toLowerCase().includes(searchQuery.toLowerCase())
           );
 
@@ -306,7 +308,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         filteredPlayers
       });
 
-      return { success: true };
+      return { success: true, affected };
     } catch (error) {
       return {
         success: false,
