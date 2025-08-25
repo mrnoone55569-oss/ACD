@@ -6,18 +6,20 @@ import { insertInitialPlayers } from '../utils/playerMigration';
 
 import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
 
- 
-
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
 import { useToast } from './ToastContainer';
+
+// NEW: theme persistence helpers
+import { fetchGlobalTheme, saveGlobalTheme } from '../services/themePersistence';
 
 const AdminPanel: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
   const { players, addPlayer, updatePlayerInfo, resetKitForAll, resetAllTiers } = usePlayerStore();
   const { theme, setTheme } = useThemeStore();
   const { showToast } = useToast();
+
   const [status, setStatus] = useState<{
     loading: boolean;
     error?: string;
@@ -34,10 +36,10 @@ const AdminPanel: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
 
-
   const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', active: true });
   const [editStates, setEditStates] = useState<Record<string, { name: string; image_url: string; active: boolean }>>({});
 
+  // Sync the edit states with current players
   useEffect(() => {
     const initial = players.reduce((acc, p) => ({
       ...acc,
@@ -46,6 +48,20 @@ const AdminPanel: React.FC = () => {
     setEditStates(initial);
   }, [players]);
 
+  // 🔄 On login/auth, fetch the persisted theme (0/1) and fire your theme function
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    (async () => {
+      try {
+        const dbTheme = await fetchGlobalTheme(); // 0 = default, 1 = winter
+        const uiTheme = dbTheme === 1 ? 'winter' : 'default';
+        setTheme(uiTheme); // this is your existing theme function — works fine
+      } catch (err) {
+        console.error('Theme fetch failed:', err);
+      }
+    })();
+  }, [isAuthenticated, setTheme]);
 
   if (!isAuthenticated) return null;
 
@@ -120,7 +136,6 @@ const AdminPanel: React.FC = () => {
       setIsResetting(false);
       setResetModal({ isOpen: false, type: 'kit' });
       setSelectedKit('');
-
     }
   };
 
@@ -147,7 +162,27 @@ const AdminPanel: React.FC = () => {
       showToast({ type: 'success', title: 'Player Updated', message: 'Changes saved' });
     } else {
       showToast({ type: 'error', title: 'Update Failed', message: result.error || 'Failed to update player' });
+    }
+  };
 
+  // NEW: Persist theme and reflect immediately in UI
+  const applyTheme = async (val: 0 | 1) => {
+    try {
+      const affected = await saveGlobalTheme(val);
+      const uiTheme = val === 1 ? 'winter' : 'default';
+      setTheme(uiTheme);
+
+      showToast({
+        type: 'success',
+        title: 'Theme Updated',
+        message: `Applied ${uiTheme} theme for ${affected} players`
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Theme Update Failed',
+        message: err?.message || 'Could not update theme'
+      });
     }
   };
 
@@ -159,8 +194,6 @@ const AdminPanel: React.FC = () => {
           Admin Controls
         </h2>
 
-
-   
         {/* Theme Section */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
@@ -172,7 +205,7 @@ const AdminPanel: React.FC = () => {
           </p>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setTheme('default')}
+              onClick={() => applyTheme(0)} // 0 = default
               className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                 theme === 'default' 
                   ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary' 
@@ -182,7 +215,7 @@ const AdminPanel: React.FC = () => {
               🌙 Default Theme
             </button>
             <button
-              onClick={() => setTheme('winter')}
+              onClick={() => applyTheme(1)} // 1 = winter
               className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                 theme === 'winter' 
                   ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary' 
@@ -193,8 +226,6 @@ const AdminPanel: React.FC = () => {
             </button>
           </div>
         </div>
-
-       
 
         {/* Reset Tiers Section */}
         <div className="mb-8">
