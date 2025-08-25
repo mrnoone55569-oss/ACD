@@ -1,41 +1,40 @@
-// src/services/playerQueries.ts
 import { supabase } from '../lib/supabase';
 import { usePlayerStore } from '../store/playerStore';
 
-type Row = {
+export type PlayerRow = {
   id: string;
   name: string;
   image_url: string | null;
   avatar: string | null;
-  kitTiers: Record<string, any> | null;
-  peakTiers?: Record<string, any> | null; // in case some envs still have it
-  peaktiers?: Record<string, any> | null; // lowercase column (current)
-  theme?: number | null;
-  active?: number | boolean | null;
-  created_at?: string;
-  updated_at?: string;
+  kitTiers: Record<string, any> | null;   // camelCase in your DB
+  peaktiers: Record<string, any> | null;  // lowercase in your DB
+  theme: 0 | 1 | null;
+  active: 0 | 1 | boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
-export async function fetchAllPlayers(): Promise<any[]> {
+export async function fetchAllPlayers(): Promise<PlayerRow[]> {
   const { data, error } = await supabase
     .from('players')
-    .select('id,name,image_url,avatar,kitTiers,peakTiers,peaktiers,theme,active,created_at,updated_at')
-    .order('created_at', { ascending: true });
+    .select('id,name,image_url,avatar,kitTiers,peaktiers,theme,active,created_at,updated_at')
+    .order('id', { ascending: true });
 
   if (error) throw error;
-
-  // normalize peak tiers + active
-  return (data as Row[]).map((r) => ({
-    ...r,
-    peakTiers: r.peaktiers ?? r.peakTiers ?? {},
-    active: typeof r.active === 'number' ? r.active : r.active ? 1 : 0,
-  }));
+  return (data ?? []) as PlayerRow[];
 }
 
-/** Pulls from DB and hydrates the store so every screen updates */
-export async function refreshPlayersInStore() {
+/** Pull fresh rows from DB and drop them into the store. */
+export async function refreshPlayersInStore(): Promise<void> {
   const rows = await fetchAllPlayers();
-  // minimal store update – assumes players is in store
-  usePlayerStore.setState((s: any) => ({ ...s, players: rows }));
-  return rows;
+
+  // Normalize DB → app shape the store probably expects:
+  // - peakTiers camelized from peaktiers
+  const normalized = rows.map((r) => ({
+    ...r,
+    peakTiers: (r as any).peaktiers ?? null,
+  }));
+
+  // Zustand lets us set state directly
+  usePlayerStore.setState({ players: normalized as any });
 }
