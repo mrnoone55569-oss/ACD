@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import bcrypt from 'bcryptjs';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -11,7 +10,6 @@ interface AuthState {
 
 // Admin credentials - in a real app, these would be in environment variables
 const ADMIN_EMAIL = 'admin@acdtierlist.com';
-const ADMIN_PASSWORD_HASH = '$2a$10$YourHashedPasswordHere'; // We'll use bcrypt to verify
 
 export const useAuthStore = create<AuthState>()(
   persist(
