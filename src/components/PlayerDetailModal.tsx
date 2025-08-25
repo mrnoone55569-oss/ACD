@@ -9,6 +9,7 @@ import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
 import TierSelector from './TierSelector';
 import TierIcon from './TierIcon';
+import { setCurrentTier, setPeakTier } from '@/services/playerPersistence';
 
 interface PlayerDetailModalProps {
   playerId: string;
@@ -85,19 +86,37 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     }
   };
 
-  const handleTierSelect = (tier: any) => {
-    if (editingKit) {
+  // CURRENT tier: optimistic local update + persist to Supabase
+  const handleTierSelect = async (tier: TierType) => {
+    if (!editingKit) return;
+
+    const prev = player.kitTiers?.[editingKit] ?? 'UNRANKED';
+    try {
+      // Optimistic update in local store
       updatePlayerTier(playerId, editingKit, tier);
+      // Persist
+      await setCurrentTier(playerId, editingKit, tier);
+    } catch (err) {
+      // Revert on failure
+      updatePlayerTier(playerId, editingKit, prev);
+      console.error('Failed to save current tier:', err);
+    } finally {
       setEditingKit(null);
       setSelectorPos(null);
     }
   };
 
-  const handlePeakTierSelect = (tier: TierType) => {
-    if (editingPeakKit) {
-      // NOTE: Keeping your original update behavior (no data model changes).
-      // If you later add an updatePlayerPeakTier action, call it here instead.
-      updatePlayerTier(playerId, editingPeakKit, player.kitTiers?.[editingPeakKit] || 'UNRANKED');
+  // PEAK tier: persist to Supabase (UI for peak will reflect when your store refreshes/refetches)
+  const handlePeakTierSelect = async (tier: TierType) => {
+    if (!editingPeakKit) return;
+
+    try {
+      await setPeakTier(playerId, editingPeakKit, tier);
+      // If you add a store method like updatePlayerPeakTier, call it here for instant UI
+      // updatePlayerPeakTier(playerId, editingPeakKit, tier);
+    } catch (err) {
+      console.error('Failed to save peak tier:', err);
+    } finally {
       setEditingPeakKit(null);
       setSelectorPos(null);
     }
