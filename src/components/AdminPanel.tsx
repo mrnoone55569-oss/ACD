@@ -180,45 +180,7 @@ const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Data Management Section */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Data Management</h3>
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              onClick={handleInitialDataLoad}
-              disabled={status.loading}
-              className={`px-6 py-3 rounded-xl transition-all duration-300 font-semibold ${
-                status.loading
-                  ? 'bg-accent-primary/20 text-accent-primary cursor-not-allowed'
-                  : 'bg-accent-gradient hover:shadow-accent-glow text-white border border-accent-primary/30 hover:border-accent-primary transform hover:scale-[1.02]'
-              }`}
-            >
-              {status.loading ? (
-                <>
-                  <span className="inline-block animate-spin mr-2">⟳</span>
-                  Loading Initial Data...
-                </>
-              ) : (
-                'Load Initial Player Data'
-              )}
-            </button>
-
-            {status.error && (
-              <div className="flex items-center text-red-400 text-sm bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/30">
-                <AlertCircle size={16} className="mr-2" />
-                {status.error}
-              </div>
-            )}
-
-            {status.success && (
-              <div className="flex items-center text-green-400 text-sm bg-green-500/10 px-3 py-2 rounded-lg border border-green-500/30">
-                <Check size={16} className="mr-2" />
-                Players added successfully!
-              </div>
-            )}
-          </div>
-        </div>
-
+       
 
         {/* Reset Tiers Section */}
         <div className="mb-8">
