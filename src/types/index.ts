@@ -14,6 +14,8 @@ export interface Player {
   updated_at?: string;
   avatar?: string;
   image_url?: string;
+  active?: boolean;
+  peakTiers?: Record<KitId, TierType>;
 }
 
 export interface TierConfig {
