@@ -22,24 +22,27 @@ interface ToastProviderProps {
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
-  const showToast = useCallback((toast: Omit<ToastProps, 'id' | 'onClose'>) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast: ToastProps = {
-      ...toast,
-      id,
-      onClose: removeToast
-    };
-    setToasts(prev => [...prev, newToast]);
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
+  const showToast = useCallback(
+    (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
+      const id = Math.random().toString(36).slice(2, 11);
+      const newToast: ToastProps = {
+        ...toast,
+        id,
+        onClose: removeToast,
+      };
+      setToasts(prev => [...prev, newToast]);
+    },
+    [removeToast]
+  );
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      
+
       {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
         {toasts.map(toast => (
@@ -50,4 +53,5 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   );
 };
 
-export default ToastContainer;
+// Export the actual component you defined
+export default ToastProvider;

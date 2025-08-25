@@ -3,7 +3,11 @@ import { useAuthStore } from '../store/authStore';
 import { usePlayerStore } from '../store/playerStore';
 import { useThemeStore } from '../store/themeStore';
 import { insertInitialPlayers } from '../utils/playerMigration';
+
 import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
+
+import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle } from 'lucide-react';
+
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
@@ -30,6 +34,7 @@ const AdminPanel: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
 
+
   const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', active: true });
   const [editStates, setEditStates] = useState<Record<string, { name: string; image_url: string; active: boolean }>>({});
 
@@ -40,6 +45,7 @@ const AdminPanel: React.FC = () => {
     }), {} as Record<string, { name: string; image_url: string; active: boolean }>);
     setEditStates(initial);
   }, [players]);
+
 
   if (!isAuthenticated) return null;
 
@@ -114,6 +120,7 @@ const AdminPanel: React.FC = () => {
       setIsResetting(false);
       setResetModal({ isOpen: false, type: 'kit' });
       setSelectedKit('');
+
     }
   };
 
@@ -140,6 +147,7 @@ const AdminPanel: React.FC = () => {
       showToast({ type: 'success', title: 'Player Updated', message: 'Changes saved' });
     } else {
       showToast({ type: 'error', title: 'Update Failed', message: result.error || 'Failed to update player' });
+
     }
   };
 
@@ -150,6 +158,7 @@ const AdminPanel: React.FC = () => {
           <Crown size={20} className="mr-2 text-accent-primary" />
           Admin Controls
         </h2>
+
 
         {/* Player Management Section */}
         <div className="mb-8">
@@ -275,6 +284,7 @@ const AdminPanel: React.FC = () => {
             )}
           </div>
         </div>
+
 
         {/* Reset Tiers Section */}
         <div className="mb-8">
