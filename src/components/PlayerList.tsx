@@ -13,10 +13,16 @@ import { KitId, TierType } from '../types';
 import { Edit3, Trophy, Search, Trash2, Plus } from 'lucide-react';
 import PlayerFormModal from './PlayerFormModal';
 
+// NEW: services to avoid store DB writes
+import { setCurrentTier } from '../services/playerPersistence';
+import { createPlayer, updatePlayerBasics, resetSinglePlayerTiers } from '../services/playerAdmin';
+
 const PlayerList: React.FC = () => {
-  const { filteredPlayers, activeKit, updatePlayerTier, resetPlayerTiers, searchQuery, addPlayer, updatePlayerInfo, players } = usePlayerStore();
+  // Only read data from store; avoid calling store methods that write to DB
+  const { filteredPlayers, activeKit, searchQuery, players } = usePlayerStore();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const { showToast } = useToast();
+
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -28,12 +34,49 @@ const PlayerList: React.FC = () => {
     playerName?: string;
   }>({ isOpen: false });
   const [isResetting, setIsResetting] = useState(false);
-  
-  const handleTierSelect = (playerId: string, tier: TierType) => {
-    if (activeKit !== 'overall') {
-      updatePlayerTier(playerId, activeKit as KitId, tier);
+
+  // Local optimistic overrides for CURRENT tier per (playerId -> kitId -> tier)
+  const [overrides, setOverrides] = useState<Record<string, Record<string, TierType>>>({});
+
+  const effectiveTier = (playerId: string, kitId: KitId, fallback: TierType) =>
+    overrides[playerId]?.[kitId] ?? fallback;
+
+  const handleTierSelect = async (playerId: string, tier: TierType) => {
+    if (activeKit === 'overall') return;
+    const kit = activeKit as KitId;
+
+    // Optimistic update
+    setOverrides(prev => ({
+      ...prev,
+      [playerId]: { ...(prev[playerId] || {}), [kit]: tier },
+    }));
+
+    try {
+      await setCurrentTier(playerId, kit, tier);
+      showToast({
+        type: 'success',
+        title: 'Tier Updated',
+        message: `Set ${KITS.find(k => k.id === kit)?.name} to ${getTierIconConfig(tier).label}`,
+      });
+    } catch (err: any) {
+      // Revert on failure
+      setOverrides(prev => {
+        const next = { ...(prev[playerId] || {}) };
+        // Remove the override; UI will fall back to store value
+        delete next[kit];
+        const all = { ...prev };
+        if (Object.keys(next).length) all[playerId] = next;
+        else delete all[playerId];
+        return all;
+      });
+      showToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: err?.message || 'Could not save tier',
+      });
+    } finally {
+      setEditingPlayer(null);
     }
-    setEditingPlayer(null);
   };
   
   const handleTierClick = (playerId: string, e: React.MouseEvent) => {
@@ -69,8 +112,14 @@ const PlayerList: React.FC = () => {
     
     setIsResetting(true);
     try {
-      const result = await resetPlayerTiers(resetModal.playerId);
+      const result = await resetSinglePlayerTiers(resetModal.playerId);
       if (result.success) {
+        // Clear any local overrides for this player
+        setOverrides(prev => {
+          const next = { ...prev };
+          delete next[resetModal.playerId!];
+          return next;
+        });
         showToast({
           type: 'success',
           title: 'Player Reset Successful',
@@ -79,11 +128,11 @@ const PlayerList: React.FC = () => {
       } else {
         throw new Error(result.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast({
         type: 'error',
         title: 'Reset Failed',
-        message: error instanceof Error ? error.message : 'An error occurred'
+        message: error?.message || 'An error occurred'
       });
     } finally {
       setIsResetting(false);
@@ -91,16 +140,17 @@ const PlayerList: React.FC = () => {
     }
   };
   
-  // Calculate points for sorting
+  // Calculate points for sorting (respects local overrides)
   const getPlayerPoints = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       return KITS.filter(kit => kit.id !== 'overall').reduce((total, kit) => {
-        const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
+        const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
+        const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
         return total + getTierIconConfig(tier).points;
       }, 0);
     }
-    
-    const tier = player.kitTiers?.[activeKit as KitId] || 'UNRANKED';
+    const originalTier = (player.kitTiers?.[activeKit as KitId] as TierType) || 'UNRANKED';
+    const tier = effectiveTier(player.id, activeKit as KitId, originalTier);
     return getTierIconConfig(tier).points;
   };
   
@@ -113,9 +163,10 @@ const PlayerList: React.FC = () => {
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       return KITS.filter(kit => kit.id !== 'overall').map(kit => {
-        const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
+        const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
+        const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
         const tierConfig = getTierIconConfig(tier);
-        const peakTier = player.peakTiers?.[kit.id as KitId] || tier;
+        const peakTier = (player.peakTiers?.[kit.id as KitId] as TierType) || originalTier;
         const peakLabel = getTierIconConfig(peakTier).label;
         const KitIcon = getKitIcon(kit.id);
 
@@ -147,9 +198,10 @@ const PlayerList: React.FC = () => {
         );
       });
     } else {
-      const tier = player.kitTiers?.[activeKit as KitId] || 'UNRANKED';
+      const originalTier = (player.kitTiers?.[activeKit as KitId] as TierType) || 'UNRANKED';
+      const tier = effectiveTier(player.id, activeKit as KitId, originalTier);
       const tierConfig = getTierIconConfig(tier);
-      const peakTier = player.peakTiers?.[activeKit as KitId] || tier;
+      const peakTier = (player.peakTiers?.[activeKit as KitId] as TierType) || originalTier;
       const peakLabel = getTierIconConfig(peakTier).label;
       const KitIcon = getKitIcon(activeKit);
 
@@ -345,20 +397,23 @@ const PlayerList: React.FC = () => {
         isLoading={isResetting}
       />
 
+      {/* Add Player: use PlayerFormModal's default service-backed submit */}
       {showAddModal && (
         <PlayerFormModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onSubmit={(name, url, active) => addPlayer(name, url, active)}
           title="Add Player"
           successMessage="Player Added"
+          // no onSubmit prop → PlayerFormModal will call createPlayer(...) internally
         />
       )}
+
+      {/* Edit Player: call the service to update basics */}
       {editPlayerId && (
         <PlayerFormModal
           isOpen={!!editPlayerId}
           onClose={() => setEditPlayerId(null)}
-          onSubmit={(name, url, active) => updatePlayerInfo(editPlayerId, { name, image_url: url, active })}
+          onSubmit={(name, url, active) => updatePlayerBasics(editPlayerId, { name, image_url: url, active })}
           title="Edit Player"
           successMessage="Player Updated"
           initial={{
