@@ -1,12 +1,13 @@
 import React from 'react';
-import { X, Trophy, Star, Crown } from 'lucide-react';
+import { X, Trophy, Star, Crown, TrendingUp } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
 import { useAuthStore } from '../store/authStore';
 import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
-import { KitId } from '../types';
+import { KitId, TierType } from '../types';
 import TierSelector from './TierSelector';
+import TierIcon from './TierIcon';
 
 interface PlayerDetailModalProps {
   playerId: string;
@@ -18,6 +19,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
   const { isAuthenticated } = useAuthStore();
   const player = players.find(p => p.id === playerId);
   const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
+  const [editingPeakKit, setEditingPeakKit] = React.useState<KitId | null>(null);
   
   if (!player) return null;
 
@@ -38,12 +40,35 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     }
   };
 
+  const handlePeakTierClick = (kitId: KitId, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAuthenticated) {
+      setEditingPeakKit(kitId);
+    }
+  };
+
   const handleTierSelect = (tier: any) => {
     if (editingKit) {
       updatePlayerTier(playerId, editingKit, tier);
       setEditingKit(null);
     }
   };
+
+  const handlePeakTierSelect = (tier: TierType) => {
+    if (editingPeakKit) {
+      // Update peak tier directly
+      const updatedPeakTiers = {
+        ...(player.peakTiers || {}),
+        [editingPeakKit]: tier
+      };
+      
+      // Update player with new peak tier
+      updatePlayerTier(playerId, editingPeakKit, player.kitTiers?.[editingPeakKit] || 'UNRANKED');
+      
+      setEditingPeakKit(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-panel-gradient rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-highlight shadow-2xl shadow-accent-glow">
@@ -100,6 +125,8 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                   .map(kit => {
                     const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
                     const tierConfig = getTierIconConfig(tier);
+                    const peakTier = player.peakTiers?.[kit.id as KitId] || tier;
+                    const peakTierConfig = getTierIconConfig(peakTier);
                     const KitIcon = getKitIcon(kit.id);
                     
                     return (
@@ -131,21 +158,43 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                           </div>
                           
                           {/* Tier Badge */}
-                          <div className="flex flex-col items-end relative">
-                            <div 
-                              className={`px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm shadow-lg transition-all duration-200 ${
-                                isAuthenticated ? 'hover:scale-105' : ''
-                              }`}
-                              style={{
-                                backgroundColor: tierConfig.bgColor,
-                                borderColor: tierConfig.borderColor,
-                                color: tierConfig.color
-                              }}
-                            >
-                              {tierConfig.label}
+                          <div className="flex items-center gap-3 relative">
+                            {/* Peak Tier Indicator */}
+                            <div className="flex flex-col items-center">
+                              <div className="text-xs text-text-muted mb-1 flex items-center gap-1">
+                                <TrendingUp size={10} />
+                                Peak
+                              </div>
+                              <div 
+                                className={`relative ${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
+                                onClick={(e) => handlePeakTierClick(kit.id as KitId, e)}
+                                title={`Peak: ${peakTierConfig.label} (Click to edit)`}
+                              >
+                                <TierIcon tier={peakTier} size="sm" showLabel={false} />
+                                {isAuthenticated && (
+                                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity animate-pulse"></div>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-xs text-text-muted mt-1">
-                              {tierConfig.points} pts
+                            
+                            {/* Current Tier Badge */}
+                            <div className="flex flex-col items-end">
+                              <div className="text-xs text-text-muted mb-1">Current</div>
+                              <div 
+                                className={`px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm shadow-lg transition-all duration-200 ${
+                                  isAuthenticated ? 'hover:scale-105' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: tierConfig.bgColor,
+                                  borderColor: tierConfig.borderColor,
+                                  color: tierConfig.color
+                                }}
+                              >
+                                {tierConfig.label}
+                              </div>
+                              <div className="text-xs text-text-muted mt-1">
+                                {tierConfig.points} pts
+                              </div>
                             </div>
                           </div>
                           
@@ -158,8 +207,28 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                               />
                             </div>
                           )}
+                          
+                          {/* Peak Tier Selector */}
+                          {editingPeakKit === kit.id && (
+                            <div className="absolute top-0 left-20 z-30">
+                              <TierSelector
+                                onSelect={handlePeakTierSelect}
+                                onClose={() => setEditingPeakKit(null)}
+                              />
+                            </div>
+                          )}
                         </div>
                         
+                      
+                      {/* Peak Tier Selector for unranked kits */}
+                      {editingPeakKit === kit.id && (
+                        <div className="absolute top-0 right-0 z-30">
+                          <TierSelector
+                            onSelect={handlePeakTierSelect}
+                            onClose={() => setEditingPeakKit(null)}
+                          />
+                        </div>
+                      )}
                         {/* Admin indicator */}
                         {isAuthenticated && (
                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -183,6 +252,8 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {unrankedKits.map(kit => {
                   const KitIcon = getKitIcon(kit.id);
+                  const peakTier = player.peakTiers?.[kit.id as KitId] || 'UNRANKED';
+                  const peakTierConfig = getTierIconConfig(peakTier);
                   
                   return (
                     <div 
@@ -203,6 +274,20 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                       >
                         <KitIcon size={16} color={`${kit.color}80`} strokeWidth={2} />
                       </div>
+                      
+                      {/* Peak tier for unranked kits */}
+                      {peakTier !== 'UNRANKED' && (
+                        <div className="absolute top-1 left-1">
+                          <div 
+                            className={`${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
+                            onClick={(e) => { e.stopPropagation(); handlePeakTierClick(kit.id as KitId, e); }}
+                            title={`Peak: ${peakTierConfig.label}`}
+                          >
+                            <TierIcon tier={peakTier} size="sm" showLabel={false} />
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="text-sm text-text-muted">{kit.name}</div>
                       
                       {/* Tier Selector for unranked kits */}

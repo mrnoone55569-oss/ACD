@@ -189,6 +189,49 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       });
     }
   },
+
+  updatePlayerPeakTier: async (playerId: string, kit: KitId, peakTier: TierType) => {
+    try {
+      const player = get().players.find(p => p.id === playerId);
+      if (!player) return;
+
+      const updatedPeakTiers = {
+        ...(player.peakTiers || {}),
+        [kit]: peakTier
+      };
+
+      const { error } = await supabase
+        .from('players')
+        .update({ peakTiers: updatedPeakTiers })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      const updatedPlayers = get().players.map(p =>
+        p.id === playerId
+          ? { ...p, peakTiers: updatedPeakTiers }
+          : p
+      );
+
+      const { searchQuery } = get();
+      const filteredPlayers = searchQuery.trim() === '' 
+        ? updatedPlayers
+        : updatedPlayers.filter(player => 
+            player.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+
+      set({
+        players: updatedPlayers,
+        filteredPlayers
+      });
+    } catch (error) {
+      console.error('Error updating player peak tier:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to update player peak tier' 
+      });
+    }
+  },
+
   resetPlayerTiers: async (playerId: string) => {
     try {
       const { error } = await supabase
