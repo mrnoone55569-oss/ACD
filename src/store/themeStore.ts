@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 type Theme = 'default' | 'winter';
 
@@ -7,7 +8,14 @@ interface ThemeState {
   setTheme: (theme: Theme) => void;
 }
 
-export const useThemeStore = create<ThemeState>(set => ({
-  theme: 'default',
-  setTheme: theme => set({ theme })
-}));
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      theme: 'default',
+      setTheme: (theme) => set({ theme })
+    }),
+    {
+      name: 'global-theme-store',
+    }
+  )
+);

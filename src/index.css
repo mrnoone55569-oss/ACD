@@ -18,10 +18,43 @@
 }
 
 @keyframes fall {
-  0% { transform: translateY(-10%); }
-  100% { transform: translateY(110%); }
+  0% { 
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
 }
-.snowflake { animation: fall 10s linear infinite; }
+
+@keyframes snowfall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.snowflake { 
+  animation: snowfall linear infinite;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+}
 
 /* ---------- Winter theme ---------- */
 .theme-winter {

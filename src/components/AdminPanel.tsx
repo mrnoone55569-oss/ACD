@@ -163,19 +163,33 @@ const AdminPanel: React.FC = () => {
    
         {/* Theme Section */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Theme</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
+            <div className="w-4 h-4 rounded-full bg-accent-primary mr-2"></div>
+            Global Theme Control
+          </h3>
+          <p className="text-sm text-text-secondary mb-4">
+            Changes the theme for all users across the entire site
+          </p>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setTheme('default')}
-              className={`px-4 py-2 rounded-lg font-semibold ${theme === 'default' ? 'bg-accent-gradient text-white' : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight'}`}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                theme === 'default' 
+                  ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary' 
+                  : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight hover:border-accent-primary/50'
+              }`}
             >
-              Default
+              🌙 Default Theme
             </button>
             <button
               onClick={() => setTheme('winter')}
-              className={`px-4 py-2 rounded-lg font-semibold ${theme === 'winter' ? 'bg-accent-gradient text-white' : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight'}`}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                theme === 'winter' 
+                  ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary' 
+                  : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight hover:border-accent-primary/50'
+              }`}
             >
-              Winter
+              ❄️ Winter Theme
             </button>
           </div>
         </div>

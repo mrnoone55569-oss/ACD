@@ -3,29 +3,28 @@ import { Crown } from 'lucide-react';
 import { KITS } from '../config/kits';
 import { usePlayerStore } from '../store/playerStore';
 import { getKitIcon } from '../config/kits';
-import { KitType } from '../types';
-import ThemeToggle from './ThemeToggle';
+import { DisplayKitType } from '../types';
 
 const KitSelector: React.FC = () => {
   const { activeKit, setActiveKit } = usePlayerStore();
   
   return (
-    <div className="p-6 bg-panel-gradient rounded-xl mb-6 overflow-x-auto border border-highlight shadow-lg shadow-accent-glow/20">
-      <div className="flex items-center gap-3 min-w-max">
-        <div className="flex space-x-3">
+    <div className="p-6 bg-panel-gradient rounded-xl mb-6 border border-highlight shadow-lg shadow-accent-glow/20">
+      <div className="overflow-x-auto">
+        <div className="flex space-x-3 min-w-max">
           <button
             className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center font-semibold ${
               activeKit === 'overall'
                 ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary'
                 : 'bg-base-dark hover:bg-highlight text-text-secondary hover:text-text-primary border border-highlight hover:border-accent-primary/50'
             }`}
-            onClick={() => setActiveKit('overall' as KitType)}
+            onClick={() => setActiveKit('overall' as DisplayKitType)}
           >
             <Crown size={18} className="mr-2" />
             <span>Overall</span>
           </button>
 
-          {KITS.map(kit => {
+          {KITS.filter(kit => kit.id !== 'shieldless').map(kit => {
             const Icon = getKitIcon(kit.id);
             const isActive = activeKit === kit.id;
 
@@ -37,7 +36,7 @@ const KitSelector: React.FC = () => {
                     ? 'bg-accent-gradient text-white shadow-accent-glow border border-accent-primary'
                     : 'bg-base-dark hover:bg-highlight text-text-secondary hover:text-text-primary border border-highlight hover:border-accent-primary/50'
                 }`}
-                onClick={() => setActiveKit(kit.id as KitType)}
+                onClick={() => setActiveKit(kit.id as DisplayKitType)}
               >
                 <Icon size={18} className="mr-2" />
                 <span>{kit.name}</span>
@@ -45,7 +44,6 @@ const KitSelector: React.FC = () => {
             );
           })}
         </div>
-        <ThemeToggle />
       </div>
     </div>
   );
