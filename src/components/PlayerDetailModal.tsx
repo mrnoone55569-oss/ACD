@@ -219,16 +219,6 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                           )}
                         </div>
                         
-                      
-                      {/* Peak Tier Selector for unranked kits */}
-                      {editingPeakKit === kit.id && (
-                        <div className="absolute top-0 right-0 z-30">
-                          <TierSelector
-                            onSelect={handlePeakTierSelect}
-                            onClose={() => setEditingPeakKit(null)}
-                          />
-                        </div>
-                      )}
                         {/* Admin indicator */}
                         {isAuthenticated && (
                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -291,15 +281,6 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                       <div className="text-sm text-text-muted">{kit.name}</div>
                       
                       {/* Tier Selector for unranked kits */}
-                      {editingKit === kit.id && (
-                        <div className="absolute top-0 right-0 z-30">
-                          <TierSelector
-                            onSelect={handleTierSelect}
-                            onClose={() => setEditingKit(null)}
-                          />
-                        </div>
-                      )}
-                      
                       {/* Admin indicator */}
                       {isAuthenticated && (
                         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
