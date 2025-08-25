@@ -24,7 +24,7 @@ const KitSelector: React.FC = () => {
             <span>Overall</span>
           </button>
 
-          {KITS.filter(kit => kit.id !== 'shieldless').map(kit => {
+          {KITS.map(kit => {
             const Icon = getKitIcon(kit.id);
             const isActive = activeKit === kit.id;
 
