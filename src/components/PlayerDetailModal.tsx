@@ -1,10 +1,12 @@
 import React from 'react';
 import { X, Trophy, Star, Crown } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
+import { useAuthStore } from '../store/authStore';
 import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
 import { KitId } from '../types';
+import TierSelector from './TierSelector';
 
 interface PlayerDetailModalProps {
   playerId: string;
@@ -12,8 +14,10 @@ interface PlayerDetailModalProps {
 }
 
 const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose }) => {
-  const { players } = usePlayerStore();
+  const { players, updatePlayerTier } = usePlayerStore();
+  const { isAuthenticated } = useAuthStore();
   const player = players.find(p => p.id === playerId);
+  const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
   
   if (!player) return null;
 
@@ -27,6 +31,19 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
   const rankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] !== 'UNRANKED');
   const unrankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] === 'UNRANKED');
 
+  const handleTierClick = (kitId: KitId, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAuthenticated) {
+      setEditingKit(kitId);
+    }
+  };
+
+  const handleTierSelect = (tier: any) => {
+    if (editingKit) {
+      updatePlayerTier(playerId, editingKit, tier);
+      setEditingKit(null);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-panel-gradient rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-highlight shadow-2xl shadow-accent-glow">
@@ -88,7 +105,12 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                     return (
                       <div 
                         key={kit.id}
-                        className="bg-base-dark rounded-xl p-4 border border-highlight hover:border-accent-primary/50 transition-all duration-300 hover:shadow-accent-glow/20"
+                        className={`bg-base-dark rounded-xl p-4 border border-highlight transition-all duration-300 relative ${
+                          isAuthenticated 
+                            ? 'hover:border-accent-primary/50 hover:shadow-accent-glow/20 cursor-pointer' 
+                            : ''
+                        }`}
+                        onClick={(e) => isAuthenticated ? handleTierClick(kit.id as KitId, e) : undefined}
                       >
                         <div className="flex items-center gap-4">
                           {/* Kit Icon */}
@@ -109,9 +131,11 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                           </div>
                           
                           {/* Tier Badge */}
-                          <div className="flex flex-col items-end">
+                          <div className="flex flex-col items-end relative">
                             <div 
-                              className="px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm shadow-lg"
+                              className={`px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm shadow-lg transition-all duration-200 ${
+                                isAuthenticated ? 'hover:scale-105' : ''
+                              }`}
                               style={{
                                 backgroundColor: tierConfig.bgColor,
                                 borderColor: tierConfig.borderColor,
@@ -124,7 +148,24 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                               {tierConfig.points} pts
                             </div>
                           </div>
+                          
+                          {/* Tier Selector */}
+                          {editingKit === kit.id && (
+                            <div className="absolute top-0 right-0 z-30">
+                              <TierSelector
+                                onSelect={handleTierSelect}
+                                onClose={() => setEditingKit(null)}
+                              />
+                            </div>
+                          )}
                         </div>
+                        
+                        {/* Admin indicator */}
+                        {isAuthenticated && (
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-2 h-2 bg-accent-primary rounded-full animate-pulse"></div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -146,7 +187,12 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                   return (
                     <div 
                       key={kit.id}
-                      className="bg-base-dark/50 rounded-lg p-3 border border-gray-700 text-center hover:border-accent-primary/30 transition-colors"
+                      className={`bg-base-dark/50 rounded-lg p-3 border border-gray-700 text-center transition-colors relative ${
+                        isAuthenticated 
+                          ? 'hover:border-accent-primary/30 cursor-pointer' 
+                          : ''
+                      }`}
+                      onClick={(e) => isAuthenticated ? handleTierClick(kit.id as KitId, e) : undefined}
                     >
                       <div 
                         className="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-600 mx-auto mb-2"
@@ -158,6 +204,23 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                         <KitIcon size={16} color={`${kit.color}80`} strokeWidth={2} />
                       </div>
                       <div className="text-sm text-text-muted">{kit.name}</div>
+                      
+                      {/* Tier Selector for unranked kits */}
+                      {editingKit === kit.id && (
+                        <div className="absolute top-0 right-0 z-30">
+                          <TierSelector
+                            onSelect={handleTierSelect}
+                            onClose={() => setEditingKit(null)}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Admin indicator */}
+                      {isAuthenticated && (
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="w-1.5 h-1.5 bg-accent-primary rounded-full animate-pulse"></div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
