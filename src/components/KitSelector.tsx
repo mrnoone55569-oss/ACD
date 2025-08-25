@@ -10,7 +10,7 @@ const KitSelector: React.FC = () => {
   
   return (
     <div className="p-6 bg-panel-gradient rounded-xl mb-6 border border-highlight shadow-lg shadow-accent-glow/20">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto custom-scrollbar">
         <div className="flex space-x-3 min-w-max">
           <button
             className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center font-semibold ${

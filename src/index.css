@@ -9,6 +9,63 @@
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* Custom modern scrollbar for kit selector */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(163, 110, 255, 0.6) rgba(31, 21, 53, 0.3);
+  padding-bottom: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(31, 21, 53, 0.3);
+  border-radius: 12px;
+  margin: 0 12px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #A36EFF 0%, #8B5CF6 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(163, 110, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(163, 110, 255, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #B47FFF 0%, #9C6DF7 100%);
+  box-shadow: 0 4px 12px rgba(163, 110, 255, 0.4);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #9A5EFF 0%, #7C4DF5 100%);
+}
+
+/* Winter theme scrollbar */
+.theme-winter .custom-scrollbar {
+  scrollbar-color: rgba(56, 189, 248, 0.6) rgba(30, 41, 59, 0.3);
+}
+
+.theme-winter .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.3);
+}
+
+.theme-winter .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+}
+
+.theme-winter .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 100%);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+}
+
+.theme-winter .custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+}
+
 /* Smooth scrolling for horizontal scroll areas */
 .scroll-smooth { scroll-behavior: smooth; }
 
