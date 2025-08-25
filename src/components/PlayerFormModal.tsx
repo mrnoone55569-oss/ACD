@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { useToast } from './ToastContainer';
+import { createPlayer } from '../services/playerAdmin';
 
 interface PlayerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (
+  /**
+   * Optional legacy handler. If provided, this will be used instead of the default DB service.
+   * Keep signature to avoid breaking callers.
+   */
+  onSubmit?: (
     name: string,
     imageUrl: string,
     active: boolean
@@ -48,14 +53,25 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
+    if (!name.trim()) {
+      showToast({ type: 'error', title: 'Validation', message: 'Name is required' });
+      return;
+    }
+
     setLoading(true);
-    const result = await onSubmit(name, imageUrl, active);
+
+    // Prefer passed-in handler if supplied; otherwise use our Supabase service
+    const result = onSubmit
+      ? await onSubmit(name, imageUrl, active)
+      : await createPlayer(name, imageUrl, active);
+
     if (result.success) {
       showToast({ type: 'success', title: successMessage, message: name });
       onClose();
     } else {
       showToast({ type: 'error', title: 'Error', message: result.error || 'Failed to save player' });
     }
+
     setLoading(false);
   };
 
