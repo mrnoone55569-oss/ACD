@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { usePlayerStore } from '../store/playerStore';
 import { insertInitialPlayers } from '../utils/playerMigration';
-import { AlertCircle, Check, Crown, Trash2, Target, Globe } from 'lucide-react';
+import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle } from 'lucide-react';
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
@@ -26,6 +26,7 @@ const AdminPanel: React.FC = () => {
   }>({ isOpen: false, type: 'kit' });
   
   const [isResetting, setIsResetting] = useState(false);
+  const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
 
   if (!isAuthenticated) return null;
 
@@ -45,12 +46,13 @@ const AdminPanel: React.FC = () => {
     }, 5000);
   };
 
-  const handleKitReset = async (kitId: KitId) => {
-    const kit = KITS.find(k => k.id === kitId);
+  const handleKitReset = () => {
+    if (!selectedKit) return;
+    const kit = KITS.find(k => k.id === selectedKit);
     setResetModal({
       isOpen: true,
       type: 'kit',
-      kitId,
+      kitId: selectedKit,
       kitName: kit?.name
     });
   };
@@ -83,7 +85,7 @@ const AdminPanel: React.FC = () => {
           showToast({
             type: 'success',
             title: 'Global Reset Successful',
-            message: 'All player tiers have been reset'
+            message: `Reset tiers for ${result.affected} players`
           });
         } else {
           throw new Error(result.error);
@@ -98,6 +100,7 @@ const AdminPanel: React.FC = () => {
     } finally {
       setIsResetting(false);
       setResetModal({ isOpen: false, type: 'kit' });
+      setSelectedKit('');
     }
   };
 
@@ -158,17 +161,33 @@ const AdminPanel: React.FC = () => {
               <Target size={16} className="mr-2" />
               Reset Specific Kit (All Players)
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {KITS.filter(kit => kit.id !== 'overall').map(kit => (
-                <button
-                  key={kit.id}
-                  onClick={() => handleKitReset(kit.id as KitId)}
-                  className="px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 hover:border-yellow-400 transition-all duration-300 text-sm font-semibold flex items-center gap-2"
-                >
-                  <Trash2 size={14} />
-                  Reset {kit.name}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedKit}
+                onChange={e => setSelectedKit(e.target.value as KitId)}
+                className="px-4 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
+              >
+                <option value="" disabled>
+                  Select a kit
+                </option>
+                {KITS.filter(kit => kit.id !== 'overall').map(kit => (
+                  <option key={kit.id} value={kit.id}>
+                    {kit.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleKitReset}
+                disabled={!selectedKit}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all duration-300 ${
+                  selectedKit
+                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 hover:border-yellow-400'
+                    : 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 cursor-not-allowed'
+                }`}
+              >
+                <Trash2 size={14} />
+                Reset Selected Kit
+              </button>
             </div>
           </div>
         </div>
