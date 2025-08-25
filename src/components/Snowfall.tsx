@@ -12,7 +12,7 @@ const Snowfall: React.FC = () => {
 
   useEffect(() => {
     const generateFlakes = () => {
-      return Array.from({ length: 20 }, (_, i) => ({
+      return Array.from({ length: 35 }, (_, i) => ({
         id: i,
         left: Math.random() * 100,
         size: Math.random() * 8 + 4,
