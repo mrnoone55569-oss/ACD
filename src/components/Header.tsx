@@ -20,7 +20,8 @@ const Header: React.FC = () => {
   
   return (
     <>
-      <header className="bg-base-dark py-4 px-6 border-b border-highlight fixed top-0 left-0 right-0 z-10 shadow-lg backdrop-blur-sm">
+      <header className="bg-base-dark py-4 px-6 border-b border-highlight fixed top-0 left-0 right-0 z-[2147483647] shadow-lg backdrop-blur-sm">
+
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
             <div className="mr-3">
