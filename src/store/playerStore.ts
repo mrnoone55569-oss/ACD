@@ -16,7 +16,6 @@ interface PlayerState {
   setActiveKit: (kit: DisplayKitType) => void;
   setSearchQuery: (query: string) => void;
   updatePlayerTier: (playerId: string, kit: KitId, tier: TierType) => Promise<void>;
-  resetAllRankings: () => Promise<void>;
   initializePlayers: () => Promise<void>;
   resetPlayerTiers: (playerId: string) => Promise<{ success: boolean; error?: string }>;
   resetKitForAll: (kitKey: KitId) => Promise<{ success: boolean; affected?: number; error?: string }>;
@@ -190,41 +189,6 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       });
     }
   },
-
-  resetAllRankings: async () => {
-    try {
-      const defaultKitTiers = PLAYERS[0].kitTiers;
-
-      const { error } = await supabase
-        .from('players')
-        .update({ kitTiers: defaultKitTiers })
-        .neq('id', '0');
-
-      if (error) throw error;
-
-      const updatedPlayers = get().players.map(player => ({
-        ...player,
-        kitTiers: defaultKitTiers
-      }));
-
-      const { searchQuery } = get();
-      const filteredPlayers = searchQuery.trim() === '' 
-        ? updatedPlayers
-        : updatedPlayers.filter(player => 
-            player.name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-
-      set({
-        players: updatedPlayers,
-        filteredPlayers
-      });
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to reset rankings' 
-      });
-    }
-  },
-
   resetPlayerTiers: async (playerId: string) => {
     try {
       const { error } = await supabase
