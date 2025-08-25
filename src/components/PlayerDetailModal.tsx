@@ -9,7 +9,7 @@ import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
 import TierSelector from './TierSelector';
 import TierIcon from './TierIcon';
-import { setCurrentTier, setPeakTier } from '../../services/playerPersistence';
+import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
 
 
 interface PlayerDetailModalProps {
