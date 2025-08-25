@@ -10,15 +10,18 @@ import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
-import { Edit3, Trophy, Search, Trash2 } from 'lucide-react';
+import { Edit3, Trophy, Search, Trash2, Plus } from 'lucide-react';
+import PlayerFormModal from './PlayerFormModal';
 
 const PlayerList: React.FC = () => {
-  const { filteredPlayers, activeKit, updatePlayerTier, resetPlayerTiers, searchQuery } = usePlayerStore();
+  const { filteredPlayers, activeKit, updatePlayerTier, resetPlayerTiers, searchQuery, addPlayer, updatePlayerInfo, players } = usePlayerStore();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const { showToast } = useToast();
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
   const [resetModal, setResetModal] = useState<{
     isOpen: boolean;
     playerId?: string;
@@ -214,15 +217,25 @@ const PlayerList: React.FC = () => {
       <div className="bg-panel-gradient rounded-xl shadow-xl overflow-hidden border border-highlight">
         <div className="bg-base-dark py-4 px-6 border-b border-highlight">
           <h2 className="text-xl font-game font-bold text-text-primary flex items-center">
-            <Trophy size={20} className="mr-2 text-yellow-500" />
-            Player Rankings
-            <span className="ml-2 text-sm text-text-muted font-normal">
-              ({activeKit === 'overall' ? 'All Kits' : KITS.find(k => k.id === activeKit)?.name})
-            </span>
-            {searchQuery && (
-              <span className="ml-2 text-sm text-accent-primary font-normal">
-                - "{searchQuery}" ({sortedPlayers.length} result{sortedPlayers.length !== 1 ? 's' : ''})
+            <div className="flex items-center">
+              <Trophy size={20} className="mr-2 text-yellow-500" />
+              Player Rankings
+              <span className="ml-2 text-sm text-text-muted font-normal">
+                ({activeKit === 'overall' ? 'All Kits' : KITS.find(k => k.id === activeKit)?.name})
               </span>
+              {searchQuery && (
+                <span className="ml-2 text-sm text-accent-primary font-normal">
+                  - "{searchQuery}" ({sortedPlayers.length} result{sortedPlayers.length !== 1 ? 's' : ''})
+                </span>
+              )}
+            </div>
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="ml-auto flex items-center gap-1 px-3 py-2 rounded-lg bg-accent-primary/20 hover:bg-accent-primary/30 text-accent-primary text-sm font-semibold"
+              >
+                <Plus size={14} /> Add Player
+              </button>
             )}
           </h2>
         </div>
@@ -268,17 +281,26 @@ const PlayerList: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Edit Button (Admin only) */}
-                {activeKit !== 'overall' && isAuthenticated && (
+                {isAuthenticated && (
                   <div className="flex-shrink-0 relative">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <button
-                        onClick={(e) => handleTierClick(player.id, e)}
-                        className="p-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary hover:text-accent-light transition-all duration-200"
-                        title="Edit Tier"
-                      >
-                        <Edit3 size={16} />
-                      </button>
+                      {activeKit !== 'overall' ? (
+                        <button
+                          onClick={(e) => handleTierClick(player.id, e)}
+                          className="p-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary hover:text-accent-light transition-all duration-200"
+                          title="Edit Tier"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditPlayerId(player.id); }}
+                          className="p-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary hover:text-accent-light transition-all duration-200"
+                          title="Edit Player"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => handlePlayerReset(player.id, player.name, e)}
                         className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200"
@@ -287,8 +309,8 @@ const PlayerList: React.FC = () => {
                         <Trash2 size={16} />
                       </button>
                     </div>
-                    {editingPlayer === player.id && (
-                      <TierSelector 
+                    {editingPlayer === player.id && activeKit !== 'overall' && (
+                      <TierSelector
                         onSelect={(tier) => handleTierSelect(player.id, tier)}
                         onClose={() => setEditingPlayer(null)}
                       />
@@ -302,7 +324,7 @@ const PlayerList: React.FC = () => {
       </div>
       
       {selectedPlayer && (
-        <PlayerDetailModal 
+        <PlayerDetailModal
           playerId={selectedPlayer}
           onClose={() => setSelectedPlayer(null)}
         />
@@ -322,6 +344,30 @@ const PlayerList: React.FC = () => {
         playerName={resetModal.playerName}
         isLoading={isResetting}
       />
+
+      {showAddModal && (
+        <PlayerFormModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={(name, url, active) => addPlayer(name, url, active)}
+          title="Add Player"
+          successMessage="Player Added"
+        />
+      )}
+      {editPlayerId && (
+        <PlayerFormModal
+          isOpen={!!editPlayerId}
+          onClose={() => setEditPlayerId(null)}
+          onSubmit={(name, url, active) => updatePlayerInfo(editPlayerId, { name, image_url: url, active })}
+          title="Edit Player"
+          successMessage="Player Updated"
+          initial={{
+            name: players.find(p => p.id === editPlayerId)?.name || '',
+            image_url: players.find(p => p.id === editPlayerId)?.image_url || '',
+            active: players.find(p => p.id === editPlayerId)?.active !== false,
+          }}
+        />
+      )}
     </>
   );
 };

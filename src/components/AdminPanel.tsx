@@ -3,9 +3,13 @@ import { useAuthStore } from '../store/authStore';
 import { usePlayerStore } from '../store/playerStore';
 import { useThemeStore } from '../store/themeStore';
 import { insertInitialPlayers } from '../utils/playerMigration';
+
+import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
+
  
 import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
  
+
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
