@@ -160,73 +160,7 @@ const AdminPanel: React.FC = () => {
         </h2>
 
 
-        {/* Player Management Section */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Player Management</h3>
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="Name"
-              value={newPlayer.name}
-              onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-              className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
-            />
-            <input
-              type="text"
-              placeholder="Image URL"
-              value={newPlayer.image_url}
-              onChange={e => setNewPlayer({ ...newPlayer, image_url: e.target.value })}
-              className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
-            />
-            <label className="flex items-center gap-2 text-text-primary">
-              <input
-                type="checkbox"
-                checked={newPlayer.active}
-                onChange={e => setNewPlayer({ ...newPlayer, active: e.target.checked })}
-              />
-              Active
-            </label>
-            <button
-              onClick={handleAddPlayer}
-              className="px-4 py-2 rounded-lg bg-accent-gradient text-white flex items-center gap-1"
-            >
-              <Plus size={14} /> Add
-            </button>
-          </div>
-          <div className="space-y-4">
-            {players.map(p => (
-              <div key={p.id} className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  value={editStates[p.id]?.name || ''}
-                  onChange={e => handleEditChange(p.id, 'name', e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
-                />
-                <input
-                  type="text"
-                  value={editStates[p.id]?.image_url || ''}
-                  onChange={e => handleEditChange(p.id, 'image_url', e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary flex-1"
-                />
-                <label className="flex items-center gap-2 text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={editStates[p.id]?.active ?? true}
-                    onChange={e => handleEditChange(p.id, 'active', e.target.checked)}
-                  />
-                  Active
-                </label>
-                <button
-                  onClick={() => handleSavePlayer(p.id)}
-                  className="px-3 py-2 rounded-lg bg-accent-primary/20 hover:bg-accent-primary/30 text-accent-primary flex items-center gap-1"
-                >
-                  <Save size={14} /> Save
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
+   
         {/* Theme Section */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Theme</h3>
