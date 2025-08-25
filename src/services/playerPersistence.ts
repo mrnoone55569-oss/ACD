@@ -1,6 +1,5 @@
-// src/services/playerPersistence.ts
-import { supabase } from '@/lib/supabase';
-import type { KitId, TierType } from '@/types';
+import { supabase } from '../lib/supabase';
+import type { KitId, TierType } from '../types';
 
 // (optional) narrow type if you have Supabase types generated
 type Json = Record<string, unknown> | null;
@@ -29,13 +28,12 @@ export async function fetchPlayer(playerId: string): Promise<PlayerRow> {
   return data as PlayerRow;
 }
 
-/** Update CURRENT tier for a kit — merges into kitTiers jsonb */
+/** Update CURRENT tier for a kit */
 export async function setCurrentTier(
   playerId: string,
   kitId: KitId,
   tier: TierType
 ): Promise<Record<string, TierType>> {
-  // Read current json
   const { data: existing, error: readErr } = await supabase
     .from('players')
     .select('kitTiers')
@@ -47,7 +45,6 @@ export async function setCurrentTier(
   const prev = (existing?.kitTiers ?? {}) as Record<string, TierType>;
   const next = { ...prev, [kitId]: tier };
 
-  // Write merged json
   const { error: writeErr } = await supabase
     .from('players')
     .update({ kitTiers: next as unknown as Json, updated_at: new Date().toISOString() })
@@ -57,13 +54,12 @@ export async function setCurrentTier(
   return next;
 }
 
-/** Update PEAK tier for a kit — merges into peakTiers jsonb */
+/** Update PEAK tier for a kit */
 export async function setPeakTier(
   playerId: string,
   kitId: KitId,
   tier: TierType
 ): Promise<Record<string, TierType>> {
-  // Read current json
   const { data: existing, error: readErr } = await supabase
     .from('players')
     .select('peakTiers')
@@ -75,7 +71,6 @@ export async function setPeakTier(
   const prev = (existing?.peakTiers ?? {}) as Record<string, TierType>;
   const next = { ...prev, [kitId]: tier };
 
-  // Write merged json
   const { error: writeErr } = await supabase
     .from('players')
     .update({ peakTiers: next as unknown as Json, updated_at: new Date().toISOString() })
@@ -83,41 +78,6 @@ export async function setPeakTier(
 
   if (writeErr) throw writeErr;
   return next;
-}
-
-/** Convenience: set both current & peak tiers together */
-export async function setBothTiers(
-  playerId: string,
-  kitId: KitId,
-  currentTier: TierType,
-  peakTier: TierType
-): Promise<{ kitTiers: Record<string, TierType>; peakTiers: Record<string, TierType> }> {
-  // Read current jsons
-  const { data: existing, error: readErr } = await supabase
-    .from('players')
-    .select('kitTiers, peakTiers')
-    .eq('id', playerId)
-    .single();
-
-  if (readErr) throw readErr;
-
-  const prevCurrent = (existing?.kitTiers ?? {}) as Record<string, TierType>;
-  const prevPeak = (existing?.peakTiers ?? {}) as Record<string, TierType>;
-
-  const nextCurrent = { ...prevCurrent, [kitId]: currentTier };
-  const nextPeak = { ...prevPeak, [kitId]: peakTier };
-
-  const { error: writeErr } = await supabase
-    .from('players')
-    .update({
-      kitTiers: nextCurrent as unknown as Json,
-      peakTiers: nextPeak as unknown as Json,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', playerId);
-
-  if (writeErr) throw writeErr;
-  return { kitTiers: nextCurrent, peakTiers: nextPeak };
 }
 
 /** Set theme (0 or 1) */
