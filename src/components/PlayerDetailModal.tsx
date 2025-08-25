@@ -12,6 +12,7 @@ import TierIcon from './TierIcon';
 import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
 
 
+
 interface PlayerDetailModalProps {
   playerId: string;
   onClose: () => void;
