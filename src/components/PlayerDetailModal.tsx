@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { X, Trophy, Star, Crown, TrendingUp } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
 import { useAuthStore } from '../store/authStore';
@@ -14,13 +15,22 @@ interface PlayerDetailModalProps {
   onClose: () => void;
 }
 
+const POPOVER_WIDTH = 280;   // approximate width of TierSelector
+const POPOVER_HEIGHT = 360;  // approximate height of TierSelector
+const POPOVER_GAP = 8;       // gap from anchor
+
+const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+
 const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose }) => {
   const { players, updatePlayerTier } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
   const player = players.find(p => p.id === playerId);
+
+  // Which kit is being edited (current tier or peak), and where to place the popover
   const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
   const [editingPeakKit, setEditingPeakKit] = React.useState<KitId | null>(null);
-  
+  const [selectorPos, setSelectorPos] = React.useState<{ left: number; top: number } | null>(null);
+
   if (!player) return null;
 
   // Calculate total points
@@ -33,16 +43,44 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
   const rankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] !== 'UNRANKED');
   const unrankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] === 'UNRANKED');
 
-  const handleTierClick = (kitId: KitId, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isAuthenticated) {
-      setEditingKit(kitId);
+  // Compute a safe on-screen position for the popover near the clicked element
+  const computePopoverPosition = (anchorEl: HTMLElement) => {
+    const rect = anchorEl.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Prefer to open to the right of the anchor; if it would overflow, clamp to viewport
+    let left = rect.right + POPOVER_GAP;
+    // If not enough space on the right, try left side of anchor
+    if (left + POPOVER_WIDTH > vw - POPOVER_GAP) {
+      left = rect.left - POPOVER_GAP - POPOVER_WIDTH;
     }
+    // If still overflowing (very narrow screens), clamp inside viewport
+    left = clamp(left, POPOVER_GAP, vw - POPOVER_WIDTH - POPOVER_GAP);
+
+    // Align vertically with the top of the anchor; clamp inside viewport height
+    let top = rect.top;
+    if (top + POPOVER_HEIGHT > vh - POPOVER_GAP) {
+      top = vh - POPOVER_HEIGHT - POPOVER_GAP;
+    }
+    top = clamp(top, POPOVER_GAP, vh - POPOVER_HEIGHT - POPOVER_GAP);
+
+    return { left, top };
   };
 
-  const handlePeakTierClick = (kitId: KitId, e: React.MouseEvent) => {
+  const openSelectorAtEvent = (e: React.MouseEvent, kind: 'current' | 'peak', kitId: KitId) => {
     e.stopPropagation();
-    if (isAuthenticated) {
+    if (!isAuthenticated) return;
+
+    const anchor = e.currentTarget as HTMLElement;
+    const pos = computePopoverPosition(anchor);
+
+    setSelectorPos(pos);
+    if (kind === 'current') {
+      setEditingPeakKit(null);
+      setEditingKit(kitId);
+    } else {
+      setEditingKit(null);
       setEditingPeakKit(kitId);
     }
   };
@@ -51,22 +89,67 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     if (editingKit) {
       updatePlayerTier(playerId, editingKit, tier);
       setEditingKit(null);
+      setSelectorPos(null);
     }
   };
 
   const handlePeakTierSelect = (tier: TierType) => {
     if (editingPeakKit) {
-      // Update peak tier directly
-      const updatedPeakTiers = {
-        ...(player.peakTiers || {}),
-        [editingPeakKit]: tier
-      };
-      
-      // Update player with new peak tier
+      // NOTE: Keeping your original update behavior (no data model changes).
+      // If you later add an updatePlayerPeakTier action, call it here instead.
       updatePlayerTier(playerId, editingPeakKit, player.kitTiers?.[editingPeakKit] || 'UNRANKED');
-      
       setEditingPeakKit(null);
+      setSelectorPos(null);
     }
+  };
+
+  // Close selector on Escape or when window resizes (to avoid misplaced popovers)
+  React.useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        setEditingKit(null);
+        setEditingPeakKit(null);
+        setSelectorPos(null);
+      }
+    };
+    const onResize = () => {
+      setEditingKit(null);
+      setEditingPeakKit(null);
+      setSelectorPos(null);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  // Renders the TierSelector in a portal at a fixed screen position
+  const renderSelectorPortal = (mode: 'current' | 'peak') => {
+    if (!selectorPos) return null;
+
+    const onClose = () => {
+      if (mode === 'current') setEditingKit(null);
+      else setEditingPeakKit(null);
+      setSelectorPos(null);
+    };
+
+    const onSelect = mode === 'current' ? handleTierSelect : handlePeakTierSelect;
+
+    return ReactDOM.createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          left: selectorPos.left,
+          top: selectorPos.top,
+          zIndex: 9999,
+        }}
+      >
+        <TierSelector onSelect={onSelect} onClose={onClose} />
+      </div>,
+      document.body
+    );
   };
 
   return (
@@ -76,9 +159,9 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
         <div className="sticky top-0 bg-base-dark rounded-t-2xl p-6 border-b border-highlight flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg">
-              <img 
-                src={player.image_url || player.avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`} 
-                alt={player.name} 
+              <img
+                src={player.image_url || player.avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
+                alt={player.name}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -128,20 +211,19 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                     const peakTier = player.peakTiers?.[kit.id as KitId] || tier;
                     const peakTierConfig = getTierIconConfig(peakTier);
                     const KitIcon = getKitIcon(kit.id);
-                    
+
                     return (
-                      <div 
+                      <div
                         key={kit.id}
                         className={`bg-base-dark rounded-xl p-4 border border-highlight transition-all duration-300 relative ${
-                          isAuthenticated 
-                            ? 'hover:border-accent-primary/50 hover:shadow-accent-glow/20 cursor-pointer' 
+                          isAuthenticated
+                            ? 'hover:border-accent-primary/50 hover:shadow-accent-glow/20'
                             : ''
                         }`}
-                        onClick={(e) => isAuthenticated ? handleTierClick(kit.id as KitId, e) : undefined}
                       >
                         <div className="flex items-center gap-4">
                           {/* Kit Icon */}
-                          <div 
+                          <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center border-2 shadow-lg relative overflow-hidden flex-shrink-0"
                             style={{
                               backgroundColor: `${kit.color}15`,
@@ -150,14 +232,14 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                           >
                             <KitIcon size={20} color={kit.color} strokeWidth={2} />
                           </div>
-                          
+
                           {/* Kit Info */}
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-text-primary">{kit.name}</div>
                             <div className="text-sm text-text-secondary">Kit Category</div>
                           </div>
-                          
-                          {/* Tier Badge */}
+
+                          {/* Tier Badges (interactive zones only) */}
                           <div className="flex items-center gap-3 relative">
                             {/* Peak Tier Indicator */}
                             <div className="flex flex-col items-center">
@@ -165,9 +247,9 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                                 <TrendingUp size={10} />
                                 Peak
                               </div>
-                              <div 
+                              <div
                                 className={`relative ${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
-                                onClick={(e) => handlePeakTierClick(kit.id as KitId, e)}
+                                onClick={(e) => openSelectorAtEvent(e, 'peak', kit.id as KitId)}
                                 title={`Peak: ${peakTierConfig.label} (Click to edit)`}
                               >
                                 <TierIcon tier={peakTier} size="sm" showLabel={false} />
@@ -176,49 +258,34 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                                 )}
                               </div>
                             </div>
-                            
+
                             {/* Current Tier Badge */}
                             <div className="flex flex-col items-end">
                               <div className="text-xs text-text-muted mb-1">Current</div>
-                              <div 
+                              <button
+                                type="button"
                                 className={`px-3 py-1.5 rounded-lg border-2 font-mono font-bold text-sm shadow-lg transition-all duration-200 ${
-                                  isAuthenticated ? 'hover:scale-105' : ''
+                                  isAuthenticated ? 'hover:scale-105 cursor-pointer' : ''
                                 }`}
                                 style={{
                                   backgroundColor: tierConfig.bgColor,
                                   borderColor: tierConfig.borderColor,
                                   color: tierConfig.color
                                 }}
+                                onClick={(e) => openSelectorAtEvent(e, 'current', kit.id as KitId)}
+                                title={`Current: ${tierConfig.label} (Click to edit)`}
                               >
                                 {tierConfig.label}
-                              </div>
+                              </button>
                               <div className="text-xs text-text-muted mt-1">
                                 {tierConfig.points} pts
                               </div>
                             </div>
                           </div>
-                          
-                          {/* Tier Selector */}
-                          {editingKit === kit.id && (
-                            <div className="absolute top-0 right-0 z-30">
-                              <TierSelector
-                                onSelect={handleTierSelect}
-                                onClose={() => setEditingKit(null)}
-                              />
-                            </div>
-                          )}
-                          
-                          {/* Peak Tier Selector */}
-                          {editingPeakKit === kit.id && (
-                            <div className="absolute top-0 left-20 z-30">
-                              <TierSelector
-                                onSelect={handlePeakTierSelect}
-                                onClose={() => setEditingPeakKit(null)}
-                              />
-                            </div>
-                          )}
+
+                          {/* (Removed the old in-card absolute TierSelector to prevent clipping) */}
                         </div>
-                        
+
                         {/* Admin indicator */}
                         {isAuthenticated && (
                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -244,18 +311,15 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                   const KitIcon = getKitIcon(kit.id);
                   const peakTier = player.peakTiers?.[kit.id as KitId] || 'UNRANKED';
                   const peakTierConfig = getTierIconConfig(peakTier);
-                  
+
                   return (
-                    <div 
+                    <div
                       key={kit.id}
                       className={`bg-base-dark/50 rounded-lg p-3 border border-gray-700 text-center transition-colors relative ${
-                        isAuthenticated 
-                          ? 'hover:border-accent-primary/30 cursor-pointer' 
-                          : ''
+                        isAuthenticated ? 'hover:border-accent-primary/30' : ''
                       }`}
-                      onClick={(e) => isAuthenticated ? handleTierClick(kit.id as KitId, e) : undefined}
                     >
-                      <div 
+                      <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-600 mx-auto mb-2"
                         style={{
                           backgroundColor: `${kit.color}10`,
@@ -264,24 +328,23 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                       >
                         <KitIcon size={16} color={`${kit.color}80`} strokeWidth={2} />
                       </div>
-                      
-                      {/* Peak tier for unranked kits */}
+
+                      {/* Peak tier for unranked kits (only this is clickable) */}
                       {peakTier !== 'UNRANKED' && (
                         <div className="absolute top-1 left-1">
-                          <div 
+                          <div
                             className={`${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
-                            onClick={(e) => { e.stopPropagation(); handlePeakTierClick(kit.id as KitId, e); }}
+                            onClick={(e) => openSelectorAtEvent(e, 'peak', kit.id as KitId)}
                             title={`Peak: ${peakTierConfig.label}`}
                           >
                             <TierIcon tier={peakTier} size="sm" showLabel={false} />
                           </div>
                         </div>
                       )}
-                      
+
                       <div className="text-sm text-text-muted">{kit.name}</div>
-                      
-                      {/* Tier Selector for unranked kits */}
-                      {/* Admin indicator */}
+
+                      {/* (No card-level click; selector opens only on peak/current controls) */}
                       {isAuthenticated && (
                         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-1.5 h-1.5 bg-accent-primary rounded-full animate-pulse"></div>
@@ -306,6 +369,10 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
           )}
         </div>
       </div>
+
+      {/* Portaled selectors so they never clip */}
+      {editingKit && renderSelectorPortal('current')}
+      {editingPeakKit && renderSelectorPortal('peak')}
     </div>
   );
 };
