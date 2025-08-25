@@ -20,11 +20,13 @@ interface PlayerState {
   resetPlayerTiers: (playerId: string) => Promise<{ success: boolean; error?: string }>;
   resetKitForAll: (kitKey: KitId) => Promise<{ success: boolean; affected?: number; error?: string }>;
   resetAllTiers: () => Promise<{ success: boolean; affected?: number; error?: string }>;
+
   addPlayer: (name: string, image_url: string, active?: boolean) => Promise<{ success: boolean; error?: string }>;
   updatePlayerInfo: (
     playerId: string,
     updates: { name?: string; image_url?: string; active?: boolean }
   ) => Promise<{ success: boolean; error?: string }>;
+
 }
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
