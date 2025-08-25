@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { usePlayerStore } from '../store/playerStore';
+import { useThemeStore } from '../store/themeStore';
 import { insertInitialPlayers } from '../utils/playerMigration';
-import { AlertCircle, Check, Crown, Trash2, Target, Globe } from 'lucide-react';
+import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
@@ -10,7 +11,8 @@ import { useToast } from './ToastContainer';
 
 const AdminPanel: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
-  const { resetKitForAll, resetAllTiers } = usePlayerStore();
+  const { players, addPlayer, updatePlayerInfo, resetKitForAll, resetAllTiers } = usePlayerStore();
+  const { theme, setTheme } = useThemeStore();
   const { showToast } = useToast();
   const [status, setStatus] = useState<{
     loading: boolean;
@@ -26,6 +28,18 @@ const AdminPanel: React.FC = () => {
   }>({ isOpen: false, type: 'kit' });
   
   const [isResetting, setIsResetting] = useState(false);
+  const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
+
+  const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', active: true });
+  const [editStates, setEditStates] = useState<Record<string, { name: string; image_url: string; active: boolean }>>({});
+
+  useEffect(() => {
+    const initial = players.reduce((acc, p) => ({
+      ...acc,
+      [p.id]: { name: p.name, image_url: p.image_url || '', active: p.active !== false }
+    }), {} as Record<string, { name: string; image_url: string; active: boolean }>);
+    setEditStates(initial);
+  }, [players]);
 
   if (!isAuthenticated) return null;
 
@@ -45,12 +59,13 @@ const AdminPanel: React.FC = () => {
     }, 5000);
   };
 
-  const handleKitReset = async (kitId: KitId) => {
-    const kit = KITS.find(k => k.id === kitId);
+  const handleKitReset = () => {
+    if (!selectedKit) return;
+    const kit = KITS.find(k => k.id === selectedKit);
     setResetModal({
       isOpen: true,
       type: 'kit',
-      kitId,
+      kitId: selectedKit,
       kitName: kit?.name
     });
   };
@@ -83,7 +98,7 @@ const AdminPanel: React.FC = () => {
           showToast({
             type: 'success',
             title: 'Global Reset Successful',
-            message: 'All player tiers have been reset'
+            message: `Reset tiers for ${result.affected} players`
           });
         } else {
           throw new Error(result.error);
@@ -98,6 +113,33 @@ const AdminPanel: React.FC = () => {
     } finally {
       setIsResetting(false);
       setResetModal({ isOpen: false, type: 'kit' });
+      setSelectedKit('');
+    }
+  };
+
+  const handleAddPlayer = async () => {
+    const result = await addPlayer(newPlayer.name, newPlayer.image_url, newPlayer.active);
+    if (result.success) {
+      showToast({ type: 'success', title: 'Player Added', message: `Added ${newPlayer.name}` });
+      setNewPlayer({ name: '', image_url: '', active: true });
+    } else {
+      showToast({ type: 'error', title: 'Add Failed', message: result.error || 'Failed to add player' });
+    }
+  };
+
+  const handleEditChange = (id: string, field: 'name' | 'image_url' | 'active', value: string | boolean) => {
+    setEditStates(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value }
+    }));
+  };
+
+  const handleSavePlayer = async (id: string) => {
+    const result = await updatePlayerInfo(id, editStates[id]);
+    if (result.success) {
+      showToast({ type: 'success', title: 'Player Updated', message: 'Changes saved' });
+    } else {
+      showToast({ type: 'error', title: 'Update Failed', message: result.error || 'Failed to update player' });
     }
   };
 
@@ -108,7 +150,93 @@ const AdminPanel: React.FC = () => {
           <Crown size={20} className="mr-2 text-accent-primary" />
           Admin Controls
         </h2>
-        
+
+        {/* Player Management Section */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Player Management</h3>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Name"
+              value={newPlayer.name}
+              onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
+              className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
+            />
+            <input
+              type="text"
+              placeholder="Image URL"
+              value={newPlayer.image_url}
+              onChange={e => setNewPlayer({ ...newPlayer, image_url: e.target.value })}
+              className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
+            />
+            <label className="flex items-center gap-2 text-text-primary">
+              <input
+                type="checkbox"
+                checked={newPlayer.active}
+                onChange={e => setNewPlayer({ ...newPlayer, active: e.target.checked })}
+              />
+              Active
+            </label>
+            <button
+              onClick={handleAddPlayer}
+              className="px-4 py-2 rounded-lg bg-accent-gradient text-white flex items-center gap-1"
+            >
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <div className="space-y-4">
+            {players.map(p => (
+              <div key={p.id} className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={editStates[p.id]?.name || ''}
+                  onChange={e => handleEditChange(p.id, 'name', e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
+                />
+                <input
+                  type="text"
+                  value={editStates[p.id]?.image_url || ''}
+                  onChange={e => handleEditChange(p.id, 'image_url', e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary flex-1"
+                />
+                <label className="flex items-center gap-2 text-text-primary">
+                  <input
+                    type="checkbox"
+                    checked={editStates[p.id]?.active ?? true}
+                    onChange={e => handleEditChange(p.id, 'active', e.target.checked)}
+                  />
+                  Active
+                </label>
+                <button
+                  onClick={() => handleSavePlayer(p.id)}
+                  className="px-3 py-2 rounded-lg bg-accent-primary/20 hover:bg-accent-primary/30 text-accent-primary flex items-center gap-1"
+                >
+                  <Save size={14} /> Save
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Theme Section */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Theme</h3>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setTheme('default')}
+              className={`px-4 py-2 rounded-lg font-semibold ${theme === 'default' ? 'bg-accent-gradient text-white' : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight'}`}
+            >
+              Default
+            </button>
+            <button
+              onClick={() => setTheme('winter')}
+              className={`px-4 py-2 rounded-lg font-semibold ${theme === 'winter' ? 'bg-accent-gradient text-white' : 'bg-base-dark text-text-secondary hover:text-text-primary border border-highlight'}`}
+            >
+              Winter
+            </button>
+          </div>
+        </div>
+
         {/* Data Management Section */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Data Management</h3>
@@ -158,17 +286,33 @@ const AdminPanel: React.FC = () => {
               <Target size={16} className="mr-2" />
               Reset Specific Kit (All Players)
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {KITS.filter(kit => kit.id !== 'overall').map(kit => (
-                <button
-                  key={kit.id}
-                  onClick={() => handleKitReset(kit.id as KitId)}
-                  className="px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 hover:border-yellow-400 transition-all duration-300 text-sm font-semibold flex items-center gap-2"
-                >
-                  <Trash2 size={14} />
-                  Reset {kit.name}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedKit}
+                onChange={e => setSelectedKit(e.target.value as KitId)}
+                className="px-4 py-2 rounded-lg bg-base-dark border border-highlight text-text-primary"
+              >
+                <option value="" disabled>
+                  Select a kit
+                </option>
+                {KITS.filter(kit => kit.id !== 'overall').map(kit => (
+                  <option key={kit.id} value={kit.id}>
+                    {kit.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleKitReset}
+                disabled={!selectedKit}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all duration-300 ${
+                  selectedKit
+                    ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 hover:border-yellow-400'
+                    : 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 cursor-not-allowed'
+                }`}
+              >
+                <Trash2 size={14} />
+                Reset Selected Kit
+              </button>
             </div>
           </div>
         </div>

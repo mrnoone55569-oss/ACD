@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Sword, Axe, Diamond, Heart, TreePine, Gem, FlaskRound, AlignJustify, ShieldX } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import { KITS } from '../config/kits';
 import { usePlayerStore } from '../store/playerStore';
 import { getKitIcon } from '../config/kits';

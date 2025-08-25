@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Header from './components/Header';
 import KitSelector from './components/KitSelector';
 import PlayerList from './components/PlayerList';
@@ -7,9 +7,12 @@ import Logo from './components/Logo';
 import AdminPanel from './components/AdminPanel';
 import { ToastProvider } from './components/ToastContainer';
 import { usePlayerStore } from './store/playerStore';
+import { useThemeStore } from './store/themeStore';
+import Snowfall from './components/Snowfall';
 
 function App() {
   const { isLoading, error } = usePlayerStore();
+  const { theme } = useThemeStore();
 
   if (isLoading) {
     return (
@@ -35,7 +38,8 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-darker text-text-primary pb-10">
+      <div className={`min-h-screen text-text-primary pb-10 ${theme === 'winter' ? 'theme-winter' : 'bg-darker'}`}>
+        {theme === 'winter' && <Snowfall />}
         <Header />
         
         <main className="container mx-auto px-4 pt-24">

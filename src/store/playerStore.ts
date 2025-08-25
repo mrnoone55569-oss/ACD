@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { Player, KitId, TierType, DisplayKitType } from '../types';
 import { PLAYERS } from '../config/players';
 import { supabase } from '../lib/supabase';
+import { getTierIconConfig } from '../config/tierIcons';
+
+const getTierPoints = (tier: TierType) => getTierIconConfig(tier).points;
 
 interface PlayerState {
   players: Player[];
@@ -17,7 +20,12 @@ interface PlayerState {
   initializePlayers: () => Promise<void>;
   resetPlayerTiers: (playerId: string) => Promise<{ success: boolean; error?: string }>;
   resetKitForAll: (kitKey: KitId) => Promise<{ success: boolean; affected?: number; error?: string }>;
-  resetAllTiers: () => Promise<{ success: boolean; error?: string }>;
+  resetAllTiers: () => Promise<{ success: boolean; affected?: number; error?: string }>;
+  addPlayer: (name: string, image_url: string, active?: boolean) => Promise<{ success: boolean; error?: string }>;
+  updatePlayerInfo: (
+    playerId: string,
+    updates: { name?: string; image_url?: string; active?: boolean }
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
@@ -32,9 +40,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   setSearchQuery: (query) => {
     const { players } = get();
-    const filteredPlayers = query.trim() === '' 
-      ? players 
-      : players.filter(player => 
+    const base = players.filter(p => p.active !== false);
+    const filteredPlayers = query.trim() === ''
+      ? base
+      : base.filter(player =>
           player.name.toLowerCase().includes(query.toLowerCase())
         );
     
@@ -49,7 +58,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       set({ isLoading: true, error: null });
       
       // Set up real-time subscription
-      const subscription = supabase
+      supabase
         .channel('players_channel')
         .on('postgres_changes', 
           { 
@@ -65,13 +74,14 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
             
             if (updatedPlayers) {
               const { searchQuery } = get();
-              const filteredPlayers = searchQuery.trim() === '' 
-                ? updatedPlayers as Player[]
-                : (updatedPlayers as Player[]).filter(player => 
+              const base = (updatedPlayers as Player[]).filter(p => p.active !== false);
+              const filteredPlayers = searchQuery.trim() === ''
+                ? base
+                : base.filter(player =>
                     player.name.toLowerCase().includes(searchQuery.toLowerCase())
                   );
-              
-              set({ 
+
+              set({
                 players: updatedPlayers as Player[],
                 filteredPlayers
               });
@@ -92,7 +102,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
           id: player.id,
           name: player.name,
           kitTiers: player.kitTiers,
-          avatar: player.avatar
+          avatar: player.avatar,
+          active: true,
+          peakTiers: player.kitTiers
         }));
 
         const { error: insertError } = await supabase
@@ -110,10 +122,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
       if (error) throw error;
 
-      set({ 
-        players: players as Player[], 
-        filteredPlayers: players as Player[],
-        isLoading: false 
+      const playerList = players as Player[];
+
+      set({
+        players: playerList,
+        filteredPlayers: playerList.filter(p => p.active !== false),
+        isLoading: false
       });
     } catch (error) {
       set({ 
@@ -135,16 +149,24 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         [kit]: tier
       };
 
+      const currentPeak = player.peakTiers?.[kit];
+      const currentPeakPoints = currentPeak ? getTierPoints(currentPeak) : -1;
+      const newTierPoints = getTierPoints(tier);
+      const updatedPeakTiers = {
+        ...(player.peakTiers || {}),
+        [kit]: currentPeakPoints > newTierPoints ? currentPeak : tier
+      };
+
       const { error } = await supabase
         .from('players')
-        .update({ kitTiers: updatedKitTiers })
+        .update({ kitTiers: updatedKitTiers, peakTiers: updatedPeakTiers })
         .eq('id', playerId);
 
       if (error) throw error;
 
-      const updatedPlayers = get().players.map(p => 
-        p.id === playerId 
-          ? { ...p, kitTiers: updatedKitTiers }
+      const updatedPlayers = get().players.map(p =>
+        p.id === playerId
+          ? { ...p, kitTiers: updatedKitTiers, peakTiers: updatedPeakTiers }
           : p
       );
 
@@ -205,8 +227,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     try {
       const { error } = await supabase
         .from('players')
-        .update({ 
+        .update({
           kitTiers: {},
+          peakTiers: {},
           updated_at: new Date().toISOString()
         })
         .eq('id', playerId);
@@ -215,8 +238,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
       // Update local state
       const updatedPlayers = get().players.map(player => 
-        player.id === playerId 
-          ? { ...player, kitTiers: {} as Record<KitId, TierType> }
+        player.id === playerId
+          ? { ...player, kitTiers: {} as Record<KitId, TierType>, peakTiers: {} as Record<KitId, TierType> }
           : player
       );
 
@@ -252,7 +275,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       const updatedPlayers = get().players.map(player => {
         const newKitTiers = { ...player.kitTiers };
         delete newKitTiers[kitKey];
-        return { ...player, kitTiers: newKitTiers };
+        const newPeakTiers = { ...(player.peakTiers || {}) };
+        delete newPeakTiers[kitKey];
+        return { ...player, kitTiers: newKitTiers, peakTiers: newPeakTiers };
       });
 
       const { searchQuery } = get();
@@ -278,26 +303,30 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   resetAllTiers: async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('players')
-        .update({ 
+        .update({
           kitTiers: {},
+          peakTiers: {},
           updated_at: new Date().toISOString()
         })
-        .neq('id', '0'); // Update all players
+        .select('id');
 
       if (error) throw error;
+
+      const affected = data?.length || 0;
 
       // Update local state
       const updatedPlayers = get().players.map(player => ({
         ...player,
-        kitTiers: {} as Record<KitId, TierType>
+        kitTiers: {} as Record<KitId, TierType>,
+        peakTiers: {} as Record<KitId, TierType>
       }));
 
       const { searchQuery } = get();
-      const filteredPlayers = searchQuery.trim() === '' 
+      const filteredPlayers = searchQuery.trim() === ''
         ? updatedPlayers
-        : updatedPlayers.filter(player => 
+        : updatedPlayers.filter(player =>
             player.name.toLowerCase().includes(searchQuery.toLowerCase())
           );
 
@@ -306,12 +335,62 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         filteredPlayers
       });
 
-      return { success: true };
+      return { success: true, affected };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to reset all tiers'
       };
+    }
+  },
+
+  addPlayer: async (name, image_url, active = true) => {
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .insert({ name, image_url, kitTiers: {}, peakTiers: {}, active })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      const newPlayer = data as Player;
+      set(state => {
+        const players = [...state.players, newPlayer];
+        const filteredPlayers = players.filter(p =>
+          p.active !== false && p.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+        );
+        return { players, filteredPlayers };
+      });
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to add player' };
+    }
+  },
+
+  updatePlayerInfo: async (playerId, updates) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      set(state => {
+        const players = state.players.map(p =>
+          p.id === playerId ? { ...p, ...updates } : p
+        );
+        const filteredPlayers = players.filter(p =>
+          p.active !== false && p.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+        );
+        return { players, filteredPlayers };
+      });
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update player' };
     }
   }
 }));
