@@ -11,8 +11,6 @@ import TierSelector from './TierSelector';
 import TierIcon from './TierIcon';
 import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
 
-
-
 interface PlayerDetailModalProps {
   playerId: string;
   onClose: () => void;
@@ -25,9 +23,25 @@ const POPOVER_GAP = 8;       // gap from anchor
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 
 const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose }) => {
-  const { players, updatePlayerTier } = usePlayerStore();
+  const { players } = usePlayerStore(); // <-- don't call updatePlayerTier to avoid DB write error
   const { isAuthenticated } = useAuthStore();
   const player = players.find(p => p.id === playerId);
+
+  // Local optimistic state to avoid touching store DB logic
+  const [localKitTiers, setLocalKitTiers] = React.useState<Record<string, TierType>>(
+    () => (player?.kitTiers ?? {}) as Record<string, TierType>
+  );
+  const [localPeakTiers, setLocalPeakTiers] = React.useState<Record<string, TierType>>(
+    () => (player?.peakTiers ?? {}) as Record<string, TierType>
+  );
+
+  React.useEffect(() => {
+    // sync if modal reopens with different data
+    if (player) {
+      setLocalKitTiers((player.kitTiers ?? {}) as Record<string, TierType>);
+      setLocalPeakTiers((player.peakTiers ?? {}) as Record<string, TierType>);
+    }
+  }, [player?.id]);
 
   // Which kit is being edited (current tier or peak), and where to place the popover
   const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
@@ -36,15 +50,15 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
 
   if (!player) return null;
 
-  // Calculate total points
+  // Calculate total points (use local optimistic data)
   const totalPoints = KITS.filter(kit => kit.id !== 'overall').reduce((total, kit) => {
-    const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
+    const tier = (localKitTiers[kit.id] as TierType) || 'UNRANKED';
     return total + getTierIconConfig(tier).points;
   }, 0);
 
-  // Get ranked kits (non-unranked)
-  const rankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] !== 'UNRANKED');
-  const unrankedKits = KITS.filter(kit => kit.id !== 'overall' && player.kitTiers?.[kit.id as KitId] === 'UNRANKED');
+  // Get ranked kits based on local state
+  const rankedKits = KITS.filter(kit => kit.id !== 'overall' && (localKitTiers[kit.id] as TierType) !== 'UNRANKED');
+  const unrankedKits = KITS.filter(kit => kit.id !== 'overall' && ((localKitTiers[kit.id] as TierType) ?? 'UNRANKED') === 'UNRANKED');
 
   // Compute a safe on-screen position for the popover near the clicked element
   const computePopoverPosition = (anchorEl: HTMLElement) => {
@@ -91,33 +105,41 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
   // CURRENT tier: optimistic local update + persist to Supabase
   const handleTierSelect = async (tier: TierType) => {
     if (!editingKit) return;
+    const kitId = editingKit;
 
-    const prev = player.kitTiers?.[editingKit] ?? 'UNRANKED';
+    const prev = (localKitTiers[kitId] as TierType) ?? 'UNRANKED';
+
+    // optimistic UI
+    setLocalKitTiers(s => ({ ...s, [kitId]: tier }));
+
     try {
-      // Optimistic update in local store
-      updatePlayerTier(playerId, editingKit, tier);
-      // Persist
-      await setCurrentTier(playerId, editingKit, tier);
+      await setCurrentTier(playerId, kitId, tier); // writes to kitTiers (camelCase)
     } catch (err) {
-      // Revert on failure
-      updatePlayerTier(playerId, editingKit, prev);
       console.error('Failed to save current tier:', err);
+      // revert UI on failure
+      setLocalKitTiers(s => ({ ...s, [kitId]: prev }));
     } finally {
       setEditingKit(null);
       setSelectorPos(null);
     }
   };
 
-  // PEAK tier: persist to Supabase (UI for peak will reflect when your store refreshes/refetches)
+  // PEAK tier: optimistic local update + persist to Supabase
   const handlePeakTierSelect = async (tier: TierType) => {
     if (!editingPeakKit) return;
+    const kitId = editingPeakKit;
+
+    const prev = (localPeakTiers[kitId] as TierType) ?? ((localKitTiers[kitId] as TierType) ?? 'UNRANKED');
+
+    // optimistic UI
+    setLocalPeakTiers(s => ({ ...s, [kitId]: tier }));
 
     try {
-      await setPeakTier(playerId, editingPeakKit, tier);
-      // If you add a store method like updatePlayerPeakTier, call it here for instant UI
-      // updatePlayerPeakTier(playerId, editingPeakKit, tier);
+      await setPeakTier(playerId, kitId, tier); // writes to peaktiers (lowercase)
     } catch (err) {
       console.error('Failed to save peak tier:', err);
+      // revert UI on failure
+      setLocalPeakTiers(s => ({ ...s, [kitId]: prev }));
     } finally {
       setEditingPeakKit(null);
       setSelectorPos(null);
@@ -220,16 +242,16 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {rankedKits
                   .sort((a, b) => {
-                    const aTier = player.kitTiers?.[a.id as KitId] || 'UNRANKED';
-                    const bTier = player.kitTiers?.[b.id as KitId] || 'UNRANKED';
+                    const aTier = (localKitTiers[a.id] as TierType) || 'UNRANKED';
+                    const bTier = (localKitTiers[b.id] as TierType) || 'UNRANKED';
                     const aPoints = getTierIconConfig(aTier).points;
                     const bPoints = getTierIconConfig(bTier).points;
                     return bPoints - aPoints;
                   })
                   .map(kit => {
-                    const tier = player.kitTiers?.[kit.id as KitId] || 'UNRANKED';
+                    const tier = (localKitTiers[kit.id] as TierType) || 'UNRANKED';
                     const tierConfig = getTierIconConfig(tier);
-                    const peakTier = player.peakTiers?.[kit.id as KitId] || tier;
+                    const peakTier = (localPeakTiers[kit.id] as TierType) || tier;
                     const peakTierConfig = getTierIconConfig(peakTier);
                     const KitIcon = getKitIcon(kit.id);
 
@@ -303,8 +325,6 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                               </div>
                             </div>
                           </div>
-
-                          {/* (Removed the old in-card absolute TierSelector to prevent clipping) */}
                         </div>
 
                         {/* Admin indicator */}
@@ -330,7 +350,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {unrankedKits.map(kit => {
                   const KitIcon = getKitIcon(kit.id);
-                  const peakTier = player.peakTiers?.[kit.id as KitId] || 'UNRANKED';
+                  const peakTier = (localPeakTiers[kit.id] as TierType) || 'UNRANKED';
                   const peakTierConfig = getTierIconConfig(peakTier);
 
                   return (
@@ -341,7 +361,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                       }`}
                     >
                       <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-600 mx-auto mb-2"
+                        className="w-10 h-10 rounded-lg flex items-centered justify-center border border-gray-600 mx-auto mb-2"
                         style={{
                           backgroundColor: `${kit.color}10`,
                           borderColor: `${kit.color}30`
