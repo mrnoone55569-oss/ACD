@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { usePlayerStore } from '../store/playerStore';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from './ToastContainer';
@@ -17,6 +18,11 @@ import { setCurrentTier } from '../services/playerPersistence';
 import { createPlayer, updatePlayerBasics, resetSinglePlayerTiers, deletePlayer } from '../services/playerAdmin';
 import { refreshPlayersInStore } from '../services/playerQuery';
 
+const POPOVER_WIDTH = 280;
+const POPOVER_HEIGHT = 360;
+const POPOVER_GAP = 8;
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
 const PlayerList: React.FC = () => {
   const { filteredPlayers, activeKit, searchQuery, players } = usePlayerStore();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
@@ -33,15 +39,28 @@ const PlayerList: React.FC = () => {
   // Local optimistic overrides for CURRENT tier per (playerId -> kitId -> tier)
   const [overrides, setOverrides] = useState<Record<string, Record<string, TierType>>>({});
 
+  // Popover state for TierSelector (portal)
+  const [selectorPos, setSelectorPos] = useState<{ left: number; top: number } | null>(null);
+
   const effectiveTier = (playerId: string, kitId: KitId, fallback: TierType) =>
     overrides[playerId]?.[kitId] ?? fallback;
 
   const refresh = async () => {
-    try {
-      await refreshPlayersInStore();
-    } catch (e) {
-      console.error('refreshPlayersInStore failed:', e);
-    }
+    try { await refreshPlayersInStore(); } catch (e) { console.error('refreshPlayersInStore failed:', e); }
+  };
+
+  const computePopoverPosition = (anchor: HTMLElement) => {
+    const rect = anchor.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+
+    let left = rect.right + POPOVER_GAP;
+    if (left + POPOVER_WIDTH > vw - POPOVER_GAP) left = rect.left - POPOVER_GAP - POPOVER_WIDTH;
+    left = clamp(left, POPOVER_GAP, vw - POPOVER_WIDTH - POPOVER_GAP);
+
+    let top = rect.top + rect.height / 2 - POPOVER_HEIGHT / 2;
+    top = clamp(top, POPOVER_GAP, vh - POPOVER_HEIGHT - POPOVER_GAP);
+
+    return { left, top };
   };
 
   const handleTierSelect = async (playerId: string, tier: TierType) => {
@@ -56,7 +75,6 @@ const PlayerList: React.FC = () => {
 
     try {
       await setCurrentTier(playerId, kit, tier);
-      // Pull fresh data so other tabs/parts reflect changes
       await refresh();
       showToast({
         type: 'success',
@@ -69,41 +87,31 @@ const PlayerList: React.FC = () => {
         const next = { ...(prev[playerId] || {}) };
         delete next[kit];
         const all = { ...prev };
-        if (Object.keys(next).length) all[playerId] = next;
-        else delete all[playerId];
+        if (Object.keys(next).length) all[playerId] = next; else delete all[playerId];
         return all;
       });
-      showToast({
-        type: 'error',
-        title: 'Update Failed',
-        message: err?.message || 'Could not save tier',
-      });
+      showToast({ type: 'error', title: 'Update Failed', message: err?.message || 'Could not save tier' });
     } finally {
       setEditingPlayer(null);
+      setSelectorPos(null);
     }
   };
   
   const handleTierClick = (playerId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
-    if (activeKit !== 'overall') {
-      setEditingPlayer(playerId);
-    }
+    if (!isAuthenticated) { setShowLoginModal(true); return; }
+    if (activeKit === 'overall') return;
+
+    const anchor = e.currentTarget as HTMLElement;
+    setSelectorPos(computePopoverPosition(anchor));
+    setEditingPlayer(playerId);
   };
 
-  const handlePlayerClick = (playerId: string) => {
-    setSelectedPlayer(playerId);
-  };
+  const handlePlayerClick = (playerId: string) => setSelectedPlayer(playerId);
 
   const handlePlayerReset = (playerId: string, playerName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
+    if (!isAuthenticated) { setShowLoginModal(true); return; }
     setResetModal({ isOpen: true, playerId, playerName });
   };
 
@@ -112,27 +120,12 @@ const PlayerList: React.FC = () => {
     setIsResetting(true);
     try {
       const result = await resetSinglePlayerTiers(resetModal.playerId);
-      if (result.success) {
-        setOverrides(prev => {
-          const next = { ...prev };
-          delete next[resetModal.playerId!];
-          return next;
-        });
-        await refresh();
-        showToast({
-          type: 'success',
-          title: 'Player Reset Successful',
-          message: `All tiers reset for ${resetModal.playerName}`
-        });
-      } else {
-        throw new Error(result.error);
-      }
+      if (!result.success) throw new Error(result.error);
+      setOverrides(prev => { const n = { ...prev }; delete n[resetModal.playerId!]; return n; });
+      await refresh();
+      showToast({ type: 'success', title: 'Player Reset Successful', message: `All tiers reset for ${resetModal.playerName}` });
     } catch (error: any) {
-      showToast({
-        type: 'error',
-        title: 'Reset Failed',
-        message: error?.message || 'An error occurred'
-      });
+      showToast({ type: 'error', title: 'Reset Failed', message: error?.message || 'An error occurred' });
     } finally {
       setIsResetting(false);
       setResetModal({ isOpen: false });
@@ -141,13 +134,9 @@ const PlayerList: React.FC = () => {
 
   const handlePlayerDelete = async (playerId: string, playerName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setShowLoginModal(true);
-      return;
-    }
+    if (!isAuthenticated) { setShowLoginModal(true); return; }
     const ok = window.confirm(`Delete ${playerName}? This cannot be undone.`);
     if (!ok) return;
-
     try {
       const res = await deletePlayer(playerId);
       if (!res.success) throw new Error(res.error);
@@ -157,7 +146,22 @@ const PlayerList: React.FC = () => {
       showToast({ type: 'error', title: 'Delete Failed', message: err?.message || 'Could not delete player' });
     }
   };
-  
+
+  // close popover on esc / resize / scroll
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { setEditingPlayer(null); setSelectorPos(null); } };
+    const onResize = () => { setEditingPlayer(null); setSelectorPos(null); };
+    const onScroll = () => { setEditingPlayer(null); setSelectorPos(null); };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, []);
+
   // sorting (respects local overrides)
   const getPlayerPoints = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
@@ -179,35 +183,31 @@ const PlayerList: React.FC = () => {
   });
 
   // Hide inactive players for non-admins; show greyscale for admins
-  const isActiveVal = (v: any) => v === 1 || v === true || v === undefined || v === null; // default treat missing as active
-  const visiblePlayers = isAuthenticated
-    ? sortedPlayers
-    : sortedPlayers.filter(p => isActiveVal(p.active));
+  const isActiveVal = (v: any) => v === 1 || v === true || v === undefined || v === null;
+  const visiblePlayers = isAuthenticated ? sortedPlayers : sortedPlayers.filter(p => isActiveVal(p.active));
+
+  // Helper: pick peak map tolerant to both keys
+  const getPeakMap = (player: any) =>
+    (player?.peakTiers ?? player?.peaktiers ?? {}) as Record<string, TierType>;
 
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
+      const peakMap = getPeakMap(player);
       return KITS.filter(kit => kit.id !== 'overall').map(kit => {
         const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
         const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
         const tierConfig = getTierIconConfig(tier);
-        const peakTier = (player.peakTiers?.[kit.id as KitId] as TierType) || originalTier;
-        const peakLabel = getTierIconConfig(peakTier).label;
+        const peakTier = (peakMap[kit.id] as TierType) ?? 'UNRANKED'; // independent
+        const peakLabel = peakTier !== 'UNRANKED' ? getTierIconConfig(peakTier).label : '—';
         const KitIcon = getKitIcon(kit.id);
 
         return (
           <div key={kit.id} className="flex flex-col items-center min-w-[60px] group" title={`Peak: ${peakLabel}`}>
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center border-2 mb-2 transition-all duration-200 shadow-lg relative overflow-hidden"
-              style={{
-                backgroundColor: tierConfig.bgColor,
-                borderColor: tierConfig.borderColor,
-                boxShadow: `0 4px 12px ${tierConfig.color}25, inset 0 1px 0 rgba(255,255,255,0.1)`
-              }}
+              style={{ backgroundColor: tierConfig.bgColor, borderColor: tierConfig.borderColor, boxShadow: `0 4px 12px ${tierConfig.color}25, inset 0 1px 0 rgba(255,255,255,0.1)` }}
             >
-              <div 
-                className="absolute inset-0 opacity-20"
-                style={{ background: `linear-gradient(135deg, ${tierConfig.color}40, transparent)` }}
-              />
+              <div className="absolute inset-0 opacity-20" style={{ background: `linear-gradient(135deg, ${tierConfig.color}40, transparent)` }} />
               <KitIcon size={18} color={kit.color} strokeWidth={2} className="relative z-10" />
             </div>
             <span className="text-xs font-mono font-bold leading-none tracking-wide" style={{ color: tierConfig.color }}>
@@ -217,22 +217,19 @@ const PlayerList: React.FC = () => {
         );
       });
     } else {
+      const peakMap = getPeakMap(player);
       const originalTier = (player.kitTiers?.[activeKit as KitId] as TierType) || 'UNRANKED';
       const tier = effectiveTier(player.id, activeKit as KitId, originalTier);
       const tierConfig = getTierIconConfig(tier);
-      const peakTier = (player.peakTiers?.[activeKit as KitId] as TierType) || originalTier;
-      const peakLabel = getTierIconConfig(peakTier).label;
+      const peakTier = (peakMap[activeKit as string] as TierType) ?? 'UNRANKED';
+      const peakLabel = peakTier !== 'UNRANKED' ? getTierIconConfig(peakTier).label : '—';
       const KitIcon = getKitIcon(activeKit);
 
       return (
         <div className="flex items-center gap-4" title={`Peak: ${peakLabel}`}>
           <div 
             className="w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all duration-200 shadow-lg relative overflow-hidden"
-            style={{
-              backgroundColor: tierConfig.bgColor,
-              borderColor: tierConfig.borderColor,
-              boxShadow: `0 4px 12px ${tierConfig.color}25, inset 0 1px 0 rgba(255,255,255,0.1)`
-            }}
+            style={{ backgroundColor: tierConfig.bgColor, borderColor: tierConfig.borderColor, boxShadow: `0 4px 12px ${tierConfig.color}25, inset 0 1px 0 rgba(255,255,255,0.1)` }}
           >
             <div className="absolute inset-0 opacity-20" style={{ background: `linear-gradient(135deg, ${tierConfig.color}40, transparent)` }} />
             <KitIcon size={20} color={KITS.find(k => k.id === activeKit)?.color} strokeWidth={2} className="relative z-10" />
@@ -310,7 +307,7 @@ const PlayerList: React.FC = () => {
               <div 
                 key={player.id} 
                 className={`py-4 px-6 transition-all duration-200 group cursor-pointer hover:bg-highlight/20 ${isAuthenticated && inactive ? 'opacity-60 grayscale' : ''}`}
-                onClick={() => handlePlayerClick(player.id)}
+                onClick={() => setSelectedPlayer(player.id)}
               >
                 <div className="flex items-center gap-4">
                   {/* Rank Badge */}
@@ -381,16 +378,6 @@ const PlayerList: React.FC = () => {
                           <XCircle size={16} />
                         </button>
                       </div>
-
-                      {/* Wrap selector to stop bubbling so row click won't open detail modal */}
-                      {editingPlayer === player.id && activeKit !== 'overall' && (
-                        <div onClick={(e) => e.stopPropagation()} className="absolute z-50 right-0">
-                          <TierSelector
-                            onSelect={(tier) => handleTierSelect(player.id, tier)}
-                            onClose={() => setEditingPlayer(null)}
-                          />
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -399,6 +386,22 @@ const PlayerList: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Viewport-level TierSelector so it never clips */}
+      {editingPlayer && selectorPos &&
+        ReactDOM.createPortal(
+          <div
+            style={{ position: 'fixed', left: selectorPos.left, top: selectorPos.top, zIndex: 9999 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TierSelector
+              onSelect={(tier) => handleTierSelect(editingPlayer, tier)}
+              onClose={() => { setEditingPlayer(null); setSelectorPos(null); }}
+            />
+          </div>,
+          document.body
+        )
+      }
       
       {selectedPlayer && (
         <PlayerDetailModal
@@ -407,9 +410,7 @@ const PlayerList: React.FC = () => {
         />
       )}
       
-      {showLoginModal && (
-        <LoginModal onClose={() => setShowLoginModal(false)} />
-      )}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
       
       <ResetConfirmModal
         isOpen={resetModal.isOpen}
