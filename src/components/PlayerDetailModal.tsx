@@ -24,6 +24,9 @@ const POPOVER_HEIGHT = 360;
 const POPOVER_GAP = 8;
 
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+// tolerate either camelCase or lowercase from the store
+const pickPeakMap = (p: any) =>
+  ((p?.peakTiers ?? p?.peaktiers) ?? {}) as Record<string, TierType>;
 
 const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose }) => {
   const { players } = usePlayerStore();
@@ -35,16 +38,17 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     () => (player?.kitTiers ?? {}) as Record<string, TierType>
   );
   const [localPeakTiers, setLocalPeakTiers] = React.useState<Record<string, TierType>>(
-    () => (player?.peakTiers ?? {}) as Record<string, TierType>
+    () => pickPeakMap(player)
   );
 
   // Resync if player or their tier maps change
   React.useEffect(() => {
     if (player) {
       setLocalKitTiers((player.kitTiers ?? {}) as Record<string, TierType>);
-      setLocalPeakTiers((player.peakTiers ?? {}) as Record<string, TierType>);
+      setLocalPeakTiers(pickPeakMap(player)); // stays independent
     }
-  }, [player?.id, player?.kitTiers, player?.peakTiers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player?.id, (player as any)?.kitTiers, (player as any)?.peakTiers, (player as any)?.peaktiers]);
 
   // Which kit is being edited (current tier or peak), and where to place the popover
   const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
@@ -129,7 +133,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     if (!editingPeakKit) return;
     const kitId = editingPeakKit;
 
-    const prev = (localPeakTiers[kitId] as TierType) ?? 'UNRANKED'; // no fallback to current
+    const prev = (localPeakTiers[kitId] as TierType) ?? 'UNRANKED';
     setLocalPeakTiers(s => ({ ...s, [kitId]: tier }));
 
     try {
@@ -250,8 +254,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                   .map(kit => {
                     const tier = (localKitTiers[kit.id] as TierType) || 'UNRANKED';
                     const tierConfig = getTierIconConfig(tier);
-                    const peakTier = (localPeakTiers[kit.id] as TierType) ?? 'UNRANKED'; // independent
-                    const peakTierConfig = getTierIconConfig(peakTier);
+                    const peakTier = (localPeakTiers[kit.id] as TierType) ?? 'UNRANKED';
                     const KitIcon = getKitIcon(kit.id);
 
                     return (
@@ -267,10 +270,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                           {/* Kit Icon */}
                           <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center border-2 shadow-lg relative overflow-hidden flex-shrink-0"
-                            style={{
-                              backgroundColor: `${kit.color}15`,
-                              borderColor: kit.color
-                            }}
+                            style={{ backgroundColor: `${kit.color}15`, borderColor: kit.color }}
                           >
                             <KitIcon size={20} color={kit.color} strokeWidth={2} />
                           </div>
@@ -281,21 +281,23 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                             <div className="text-sm text-text-secondary">Kit Category</div>
                           </div>
 
-                          {/* Tier Badges (interactive zones only) */}
+                          {/* Tier Badges */}
                           <div className="flex items-center gap-3 relative">
-                            {/* Peak Tier Indicator */}
+                            {/* Peak Tier Indicator (show only if present) */}
                             <div className="flex flex-col items-center">
                               <div className="text-xs text-text-muted mb-1 flex items-center gap-1">
                                 <TrendingUp size={10} />
                                 Peak
                               </div>
-                              <div
-                                className={`relative ${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
-                                onClick={(e) => openSelectorAtEvent(e, 'peak', kit.id as KitId)}
-                                title={`Peak: ${peakTierConfig.label} (Click to edit)`}
-                              >
-                                <TierIcon tier={peakTier} size="sm" showLabel={false} />
-                              </div>
+                              {peakTier !== 'UNRANKED' && (
+                                <div
+                                  className={`relative ${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
+                                  onClick={(e) => openSelectorAtEvent(e, 'peak', kit.id as KitId)}
+                                  title={`Peak: ${getTierIconConfig(peakTier).label} (Click to edit)`}
+                                >
+                                  <TierIcon tier={peakTier} size="sm" showLabel={false} />
+                                </div>
+                              )}
                             </div>
 
                             {/* Current Tier Badge */}
@@ -340,7 +342,6 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                 {unrankedKits.map(kit => {
                   const KitIcon = getKitIcon(kit.id);
                   const peakTier = (localPeakTiers[kit.id] as TierType) ?? 'UNRANKED';
-                  const peakTierConfig = getTierIconConfig(peakTier);
 
                   return (
                     <div
@@ -351,21 +352,18 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                     >
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-600 mx-auto mb-2"
-                        style={{
-                          backgroundColor: `${kit.color}10`,
-                          borderColor: `${kit.color}30`
-                        }}
+                        style={{ backgroundColor: `${kit.color}10`, borderColor: `${kit.color}30` }}
                       >
                         <KitIcon size={16} color={`${kit.color}80`} strokeWidth={2} />
                       </div>
 
-                      {/* Peak tier for unranked kits (only this is clickable) */}
+                      {/* Peak tier for unranked kits (show only if present) */}
                       {peakTier !== 'UNRANKED' && (
                         <div className="absolute top-1 left-1">
                           <div
                             className={`${isAuthenticated ? 'cursor-pointer hover:scale-110' : ''} transition-all duration-200`}
                             onClick={(e) => openSelectorAtEvent(e, 'peak', kit.id as KitId)}
-                            title={`Peak: ${peakTierConfig.label}`}
+                            title={`Peak: ${getTierIconConfig(peakTier).label}`}
                           >
                             <TierIcon tier={peakTier} size="sm" showLabel={false} />
                           </div>
