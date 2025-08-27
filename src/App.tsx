@@ -50,8 +50,7 @@ function App() {
                 ACD Tier List Rankings
               </h1>
               <p className="text-text-secondary max-w-2xl text-center md:text-left">
-                View and manage player rankings across different kit categories. 
-                Select a kit category to view specific rankings and click on a tier to update it.
+                view your tiers and other players tiers
               </p>
             </div>
           </div>
