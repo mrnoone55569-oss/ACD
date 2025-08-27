@@ -12,16 +12,16 @@ import TierIcon from './TierIcon';
 
 // services
 import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
-import { refreshPlayersInStore } from '../services/playerQuery'; // <-- singular
+import { refreshPlayersInStore } from '../services/playerQuery';
 
 interface PlayerDetailModalProps {
   playerId: string;
   onClose: () => void;
 }
 
-const POPOVER_WIDTH = 280;   // approximate width of TierSelector
-const POPOVER_HEIGHT = 360;  // approximate height of TierSelector
-const POPOVER_GAP = 8;       // gap from anchor
+const POPOVER_WIDTH = 280;
+const POPOVER_HEIGHT = 360;
+const POPOVER_GAP = 8;
 
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 
@@ -38,12 +38,13 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     () => (player?.peakTiers ?? {}) as Record<string, TierType>
   );
 
+  // Resync if player or their tier maps change
   React.useEffect(() => {
     if (player) {
       setLocalKitTiers((player.kitTiers ?? {}) as Record<string, TierType>);
       setLocalPeakTiers((player.peakTiers ?? {}) as Record<string, TierType>);
     }
-  }, [player?.id]);
+  }, [player?.id, player?.kitTiers, player?.peakTiers]);
 
   // Which kit is being edited (current tier or peak), and where to place the popover
   const [editingKit, setEditingKit] = React.useState<KitId | null>(null);
@@ -71,14 +72,12 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Prefer to open to the right of the anchor; if it would overflow, try left; then clamp.
     let left = rect.right + POPOVER_GAP;
     if (left + POPOVER_WIDTH > vw - POPOVER_GAP) {
       left = rect.left - POPOVER_GAP - POPOVER_WIDTH;
     }
     left = clamp(left, POPOVER_GAP, vw - POPOVER_WIDTH - POPOVER_GAP);
 
-    // Align vertically with the top of the anchor; clamp inside viewport height
     let top = rect.top;
     if (top + POPOVER_HEIGHT > vh - POPOVER_GAP) {
       top = vh - POPOVER_HEIGHT - POPOVER_GAP;
@@ -115,7 +114,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
 
     try {
       await setCurrentTier(playerId, kitId, tier);
-      await refreshPlayersInStore(); // keep the store (and other tabs) in sync
+      await refreshPlayersInStore();
     } catch (err) {
       console.error('Failed to save current tier:', err);
       setLocalKitTiers(s => ({ ...s, [kitId]: prev }));
@@ -130,7 +129,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     if (!editingPeakKit) return;
     const kitId = editingPeakKit;
 
-    const prev = (localPeakTiers[kitId] as TierType) ?? ((localKitTiers[kitId] as TierType) ?? 'UNRANKED');
+    const prev = (localPeakTiers[kitId] as TierType) ?? 'UNRANKED'; // no fallback to current
     setLocalPeakTiers(s => ({ ...s, [kitId]: tier }));
 
     try {
@@ -145,7 +144,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
     }
   };
 
-  // Close selector on Escape or resize (to avoid misplaced popovers)
+  // Close selector on Escape or resize
   React.useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') {
@@ -251,7 +250,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
                   .map(kit => {
                     const tier = (localKitTiers[kit.id] as TierType) || 'UNRANKED';
                     const tierConfig = getTierIconConfig(tier);
-                    const peakTier = (localPeakTiers[kit.id] as TierType) || tier;
+                    const peakTier = (localPeakTiers[kit.id] as TierType) ?? 'UNRANKED'; // independent
                     const peakTierConfig = getTierIconConfig(peakTier);
                     const KitIcon = getKitIcon(kit.id);
 
@@ -340,7 +339,7 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {unrankedKits.map(kit => {
                   const KitIcon = getKitIcon(kit.id);
-                  const peakTier = (localPeakTiers[kit.id] as TierType) || 'UNRANKED';
+                  const peakTier = (localPeakTiers[kit.id] as TierType) ?? 'UNRANKED';
                   const peakTierConfig = getTierIconConfig(peakTier);
 
                   return (
