@@ -320,15 +320,15 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
-                      <img 
-                        src={getPlayerImageWithFallback(player.name, 'body')} 
-                        alt={player.name} 
+                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
+                      <img
+                        src={player.full_body_url || getPlayerImageWithFallback(player.name, 'body')}
+                        alt={player.name}
                         className="w-full h-full object-contain"
                         onError={(e) => {
-                          // Fallback to head render if body render fails
+                          // Fallback to head render if full body render fails
                           const target = e.target as HTMLImageElement;
-                          if (!target.src.includes('avatars')) {
+                          if (target.src !== getPlayerImageWithFallback(player.name, 'head')) {
                             target.src = getPlayerImageWithFallback(player.name, 'head');
                           }
                         }}
@@ -436,8 +436,8 @@ const PlayerList: React.FC = () => {
         <PlayerFormModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onSubmit={async (name, url, active) => {
-            const res = await createPlayer(name, url, active);
+          onSubmit={async (name, url, active, fullBodyUrl) => {
+            const res = await createPlayer(name, url, active, fullBodyUrl);
             if (res.success) await refresh();
             return res;
           }}
@@ -451,8 +451,8 @@ const PlayerList: React.FC = () => {
         <PlayerFormModal
           isOpen={!!editPlayerId}
           onClose={() => setEditPlayerId(null)}
-          onSubmit={async (name, url, active) => {
-            const res = await updatePlayerBasics(editPlayerId, { name, image_url: url, active });
+          onSubmit={async (name, url, active, fullBodyUrl) => {
+            const res = await updatePlayerBasics(editPlayerId, { name, image_url: url, full_body_url: fullBodyUrl, active });
             if (res.success) await refresh();
             return res;
           }}
@@ -461,6 +461,7 @@ const PlayerList: React.FC = () => {
           initial={{
             name: players.find(p => p.id === editPlayerId)?.name || '',
             image_url: players.find(p => p.id === editPlayerId)?.image_url || '',
+            full_body_url: players.find(p => p.id === editPlayerId)?.full_body_url || '',
             active: players.find(p => p.id === editPlayerId)?.active !== 0 && players.find(p => p.id === editPlayerId)?.active !== false,
           }}
         />

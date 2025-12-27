@@ -10,7 +10,8 @@ function genPlayerId() {
 export async function createPlayer(
   name: string,
   image_url: string,
-  active: boolean
+  active: boolean,
+  full_body_url?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const id = genPlayerId();
@@ -23,6 +24,7 @@ export async function createPlayer(
           id,
           name,
           image_url: image_url || null,
+          full_body_url: full_body_url || null,
           active: active ? 1 : 0, // 0/1
           kitTiers: {},           // camelCase
           peaktiers: {},          // lowercase
@@ -43,12 +45,13 @@ export async function createPlayer(
 
 export async function updatePlayerBasics(
   id: string,
-  fields: { name?: string; image_url?: string; active?: boolean }
+  fields: { name?: string; image_url?: string; full_body_url?: string; active?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const payload: Record<string, any> = { updated_at: new Date().toISOString() };
     if (fields.name !== undefined) payload.name = fields.name;
     if (fields.image_url !== undefined) payload.image_url = fields.image_url || null;
+    if (fields.full_body_url !== undefined) payload.full_body_url = fields.full_body_url || null;
     if (fields.active !== undefined) payload.active = fields.active ? 1 : 0;
 
     const { error } = await supabase.from('players').update(payload).eq('id', id);

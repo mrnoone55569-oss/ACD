@@ -13,13 +13,15 @@ interface PlayerFormModalProps {
   onSubmit?: (
     name: string,
     imageUrl: string,
-    active: boolean
+    active: boolean,
+    fullBodyUrl?: string
   ) => Promise<{ success: boolean; error?: string }>;
   title: string;
   successMessage: string;
   initial?: {
     name: string;
     image_url: string;
+    full_body_url?: string;
     active: boolean;
   };
 }
@@ -34,6 +36,7 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [fullBodyUrl, setFullBodyUrl] = useState('');
   const [active, setActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
@@ -42,10 +45,12 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
     if (initial) {
       setName(initial.name || '');
       setImageUrl(initial.image_url || '');
+      setFullBodyUrl(initial.full_body_url || '');
       setActive(initial.active ?? true);
     } else {
       setName('');
       setImageUrl('');
+      setFullBodyUrl('');
       setActive(true);
     }
   }, [initial, isOpen]);
@@ -62,8 +67,8 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
 
     // Prefer passed-in handler if supplied; otherwise use our Supabase service
     const result = onSubmit
-      ? await onSubmit(name, imageUrl, active)
-      : await createPlayer(name, imageUrl, active);
+      ? await onSubmit(name, imageUrl, active, fullBodyUrl)
+      : await createPlayer(name, imageUrl, active, fullBodyUrl);
 
     if (result.success) {
       showToast({ type: 'success', title: successMessage, message: name });
@@ -108,6 +113,17 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
               onChange={e => setImageUrl(e.target.value)}
               className="w-full bg-base-dark border border-highlight rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30 placeholder-text-muted"
               placeholder="https://example.com/avatar.png"
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Full Body URL</label>
+            <input
+              type="text"
+              value={fullBodyUrl}
+              onChange={e => setFullBodyUrl(e.target.value)}
+              className="w-full bg-base-dark border border-highlight rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30 placeholder-text-muted"
+              placeholder="https://example.com/full-body.png"
               disabled={loading}
             />
           </div>
