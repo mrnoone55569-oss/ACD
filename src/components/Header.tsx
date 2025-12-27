@@ -3,6 +3,7 @@ import { Crown, LogOut, Settings, Search, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { usePlayerStore } from '../store/playerStore';
 import LoginModal from './LoginModal';
+import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 const Header: React.FC = () => {
   const { isAuthenticated, logout } = useAuthStore();

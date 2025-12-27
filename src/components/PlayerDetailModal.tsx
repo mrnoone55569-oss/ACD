@@ -13,6 +13,7 @@ import TierIcon from './TierIcon';
 // services
 import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
 import { refreshPlayersInStore } from '../services/playerQuery';
+import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 interface PlayerDetailModalProps {
   playerId: string;
@@ -204,11 +205,18 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
         {/* Header */}
         <div className="sticky top-0 bg-base-dark rounded-t-2xl p-6 border-b border-highlight flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
               <img
-                src={player.image_url || (player as any).avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
+                src={getPlayerImageWithFallback(player.name, 'body')}
                 alt={player.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback to head render if body render fails
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes('avatars')) {
+                    target.src = getPlayerImageWithFallback(player.name, 'head');
+                  }
+                }}
               />
             </div>
             <div>
