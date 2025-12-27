@@ -11,7 +11,7 @@ import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
-import { Edit3, Trophy, Search, Trash2, Plus, XCircle } from 'lucide-react';
+import { CreditCard as Edit3, Trophy, Search, Trash2, Plus, XCircle } from 'lucide-react';
 import PlayerFormModal from './PlayerFormModal';
 import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
