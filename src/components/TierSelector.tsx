@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { TIER_ICONS, getTierIconConfig } from '../config/tierIcons';
+import { TIER_ICONS } from '../config/tierIcons';
 import TierIcon from './TierIcon';
 import { TierType } from '../types';
-import { sortTiersByValue } from '../utils/tierSorting';
 
 interface TierSelectorProps {
   onSelect: (tier: TierType) => void;
@@ -25,13 +24,6 @@ const TierSelector: React.FC<TierSelectorProps> = ({ onSelect, onClose }) => {
     };
   }, [onClose]);
   
-  // Get all non-unranked tiers and sort them properly
-  const availableTiers = TIER_ICONS
-    .filter(tier => tier.id !== 'UNRANKED')
-    .map(tier => tier.id as TierType);
-  
-  const sortedTiers = sortTiersByValue(availableTiers);
-  
   return (
     <div 
       ref={ref}
@@ -41,13 +33,13 @@ const TierSelector: React.FC<TierSelectorProps> = ({ onSelect, onClose }) => {
       <div className="mb-3">
         <h4 className="text-sm font-semibold text-text-secondary mb-3">Select Tier</h4>
         <div className="grid grid-cols-5 gap-3">
-          {sortedTiers.map(tierId => (
+          {TIER_ICONS.filter(tier => tier.id !== 'UNRANKED').map(tier => (
             <div 
-              key={tierId} 
-              onClick={() => onSelect(tierId)}
+              key={tier.id} 
+              onClick={() => onSelect(tier.id as TierType)}
               className="cursor-pointer hover:scale-110 transition-all duration-200"
             >
-              <TierIcon tier={tierId} size="sm" showLabel={true} />
+              <TierIcon tier={tier.id as TierType} size="sm" showLabel={true} />
             </div>
           ))}
         </div>

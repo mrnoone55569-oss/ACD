@@ -11,9 +11,8 @@ import { KITS } from '../config/kits';
 import { getTierIconConfig } from '../config/tierIcons';
 import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
-import { CreditCard as Edit3, Trophy, Search, Trash2, Plus, XCircle } from 'lucide-react';
+import { Edit3, Trophy, Search, Trash2, Plus, XCircle } from 'lucide-react';
 import PlayerFormModal from './PlayerFormModal';
-import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 import { setCurrentTier } from '../services/playerPersistence';
 import { createPlayer, updatePlayerBasics, resetSinglePlayerTiers, deletePlayer } from '../services/playerAdmin';
@@ -320,18 +319,11 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg">
                       <img 
-                        src={getPlayerImageWithFallback(player.name, 'body')} 
+                        src={player.image_url || (player as any).avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`} 
                         alt={player.name} 
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          // Fallback to head render if body render fails
-                          const target = e.target as HTMLImageElement;
-                          if (!target.src.includes('avatars')) {
-                            target.src = getPlayerImageWithFallback(player.name, 'head');
-                          }
-                        }}
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   </div>

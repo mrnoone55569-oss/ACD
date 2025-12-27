@@ -40,16 +40,6 @@ export const TIER_ICONS: TierIconConfig[] = [
     order: 1
   },
   {
-    id: 'RHT1',
-    icon: Award,
-    color: '#92400e',
-    bgColor: 'rgba(146, 64, 14, 0.15)',
-    borderColor: '#92400e',
-    label: 'RHT1',
-    points: 30,
-    order: 2
-  },
-  {
     id: 'LT1',
     icon: Trophy,
     color: '#f59e0b',
@@ -57,17 +47,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#f59e0b',
     label: 'LT1',
     points: 45,
-    order: 3
-  },
-  {
-    id: 'RLT1',
-    icon: Flame,
-    color: '#78350f',
-    bgColor: 'rgba(120, 53, 15, 0.15)',
-    borderColor: '#78350f',
-    label: 'RLT1',
-    points: 22.5,
-    order: 4
+    order: 2
   },
   {
     id: 'HT2',
@@ -77,17 +57,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#60a5fa',
     label: 'HT2',
     points: 30,
-    order: 5
-  },
-  {
-    id: 'RHT2',
-    icon: Sparkles,
-    color: '#1e40af',
-    bgColor: 'rgba(30, 64, 175, 0.15)',
-    borderColor: '#1e40af',
-    label: 'RHT2',
-    points: 15,
-    order: 6
+    order: 3
   },
   {
     id: 'LT2',
@@ -97,17 +67,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#3b82f6',
     label: 'LT2',
     points: 20,
-    order: 7
-  },
-  {
-    id: 'RLT2',
-    icon: Circle,
-    color: '#1e3a8a',
-    bgColor: 'rgba(30, 58, 138, 0.15)',
-    borderColor: '#1e3a8a',
-    label: 'RLT2',
-    points: 10,
-    order: 8
+    order: 4
   },
   {
     id: 'HT3',
@@ -117,7 +77,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#a78bfa',
     label: 'HT3',
     points: 10,
-    order: 9
+    order: 5
   },
   {
     id: 'LT3',
@@ -127,7 +87,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#8b5cf6',
     label: 'LT3',
     points: 6,
-    order: 10
+    order: 6
   },
   {
     id: 'HT4',
@@ -137,7 +97,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#34d399',
     label: 'HT4',
     points: 4,
-    order: 11
+    order: 7
   },
   {
     id: 'LT4',
@@ -147,7 +107,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#10b981',
     label: 'LT4',
     points: 3,
-    order: 12
+    order: 8
   },
   {
     id: 'HT5',
@@ -157,7 +117,7 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#fb7185',
     label: 'HT5',
     points: 2,
-    order: 13
+    order: 9
   },
   {
     id: 'LT5',
@@ -167,6 +127,47 @@ export const TIER_ICONS: TierIconConfig[] = [
     borderColor: '#e11d48',
     label: 'LT5',
     points: 1,
+    order: 10
+  },
+  // Retired tiers
+  {
+    id: 'RHT1',
+    icon: Award,
+    color: '#92400e',
+    bgColor: 'rgba(146, 64, 14, 0.15)',
+    borderColor: '#92400e',
+    label: 'RHT1',
+    points: 30,
+    order: 11
+  },
+  {
+    id: 'RLT1',
+    icon: Flame,
+    color: '#78350f',
+    bgColor: 'rgba(120, 53, 15, 0.15)',
+    borderColor: '#78350f',
+    label: 'RLT1',
+    points: 22.5,
+    order: 12
+  },
+  {
+    id: 'RHT2',
+    icon: Sparkles,
+    color: '#1e40af',
+    bgColor: 'rgba(30, 64, 175, 0.15)',
+    borderColor: '#1e40af',
+    label: 'RHT2',
+    points: 15,
+    order: 13
+  },
+  {
+    id: 'RLT2',
+    icon: Circle,
+    color: '#1e3a8a',
+    bgColor: 'rgba(30, 58, 138, 0.15)',
+    borderColor: '#1e3a8a',
+    label: 'RLT2',
+    points: 10,
     order: 14
   },
   {
