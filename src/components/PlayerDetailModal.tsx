@@ -204,11 +204,11 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
         {/* Header */}
         <div className="sticky top-0 bg-base-dark rounded-t-2xl p-6 border-b border-highlight flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg">
+            <div className="w-20 h-28 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
               <img
-                src={player.image_url || (player as any).avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
+                src={(player as any).full_body_url || player.image_url || (player as any).avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`}
                 alt={player.name}
-                className="w-full h-full object-cover"
+                className="w-full h-auto object-cover scale-150 -translate-y-4"
               />
             </div>
             <div>
