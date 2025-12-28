@@ -191,12 +191,31 @@ const PlayerList: React.FC = () => {
   const getPeakMap = (player: any) =>
     (player?.peakTiers ?? player?.peaktiers ?? {}) as Record<string, TierType>;
 
+  // ✅ CHANGE #2: Tier priority ordering for badges in "overall"
+  const tierPriority = (tier: TierType) => {
+    const m = String(tier).match(/^(HT|LT)(\d+)$/);
+    if (!m) return 9999; // unknown/unranked/retired formats go last
+    const type = m[1]; // HT | LT
+    const num = parseInt(m[2], 10); // 1..N
+    // priority: HT1, LT1, HT2, LT2, ...
+    return num * 10 + (type === 'HT' ? 0 : 1);
+  };
+
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       const peakMap = getPeakMap(player);
-      return KITS.filter(kit => kit.id !== 'overall').map(kit => {
-        const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
-        const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
+
+      // ✅ CHANGE #2 applied here: sort kit badges by tier priority
+      const items = KITS
+        .filter(kit => kit.id !== 'overall')
+        .map(kit => {
+          const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
+          const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
+          return { kit, tier };
+        })
+        .sort((a, b) => tierPriority(a.tier) - tierPriority(b.tier));
+
+      return items.map(({ kit, tier }) => {
         const tierConfig = getTierIconConfig(tier);
         const peakTier = (peakMap[kit.id] as TierType) ?? 'UNRANKED'; // independent
         const peakLabel = peakTier !== 'UNRANKED' ? getTierIconConfig(peakTier).label : '—';
@@ -320,20 +339,27 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
-                      <img
-                        src={player.full_body_url || getPlayerImageWithFallback(player.name, 'body')}
-                        alt={player.name}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          // Fallback to head render if full body render fails
-                          const target = e.target as HTMLImageElement;
-                          if (target.src !== getPlayerImageWithFallback(player.name, 'head')) {
-                            target.src = getPlayerImageWithFallback(player.name, 'head');
-                          }
-                        }}
-                      />
-                    </div>
+                    {/* ✅ CHANGE #1: Crop full-body to "half body" (upper portion) using Tailwind */}
+            <div className="w-24 h-24 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+  <img
+    src={player.full_body_url || getPlayerImageWithFallback(player.name, 'body')}
+    alt={player.name}
+    className="
+      w-full
+      h-auto
+      object-cover
+      scale-130
+      -translate-y-3
+      origin-top
+    "
+    onError={(e) => {
+      const target = e.target as HTMLImageElement;
+      if (target.src !== getPlayerImageWithFallback(player.name, 'head')) {
+        target.src = getPlayerImageWithFallback(player.name, 'head');
+      }
+    }}
+  />
+</div>
                   </div>
 
                   {/* Player Name */}
