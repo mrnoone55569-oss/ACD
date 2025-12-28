@@ -13,6 +13,7 @@ import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
 import { CreditCard as Edit3, Trophy, Search, Trash2, Plus, XCircle } from 'lucide-react';
 import PlayerFormModal from './PlayerFormModal';
+import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 import { setCurrentTier } from '../services/playerPersistence';
 import { createPlayer, updatePlayerBasics, resetSinglePlayerTiers, deletePlayer } from '../services/playerAdmin';
@@ -162,40 +163,7 @@ const PlayerList: React.FC = () => {
     };
   }, []);
 
-  // Tier priority order for sorting
-  const TIER_ORDER: TierType[] = [
-    'HT1', 'LT1', 'HT2', 'LT2', 'HT3', 'LT3', 'HT4', 'LT4', 'HT5', 'LT5',
-    'RHT1', 'RLT1', 'RHT2', 'RLT2', 'UNRANKED'
-  ];
-
-  const getTierPriority = (tier: TierType): number => {
-    const index = TIER_ORDER.indexOf(tier);
-    return index === -1 ? 9999 : index;
-  };
-
-  const getPlayerTier = (player: typeof filteredPlayers[0]): TierType => {
-    if (activeKit === 'overall') {
-      let bestTier: TierType = 'UNRANKED';
-      let bestPriority = 9999;
-
-      KITS.filter(kit => kit.id !== 'overall').forEach(kit => {
-        const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
-        const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
-        const priority = getTierPriority(tier);
-
-        if (priority < bestPriority) {
-          bestTier = tier;
-          bestPriority = priority;
-        }
-      });
-
-      return bestTier;
-    } else {
-      const originalTier = (player.kitTiers?.[activeKit as KitId] as TierType) || 'UNRANKED';
-      return effectiveTier(player.id, activeKit as KitId, originalTier);
-    }
-  };
-
+  // sorting (respects local overrides)
   const getPlayerPoints = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       return KITS.filter(kit => kit.id !== 'overall').reduce((total, kit) => {
@@ -208,25 +176,11 @@ const PlayerList: React.FC = () => {
     const tier = effectiveTier(player.id, activeKit as KitId, originalTier);
     return getTierIconConfig(tier).points;
   };
-
+  
   const sortedPlayers = [...filteredPlayers].sort((a, b) => {
-    const aTier = getPlayerTier(a);
-    const bTier = getPlayerTier(b);
-    const aTierPriority = getTierPriority(aTier);
-    const bTierPriority = getTierPriority(bTier);
-
-    if (aTierPriority !== bTierPriority) {
-      return aTierPriority - bTierPriority;
-    }
-
     const aPoints = getPlayerPoints(a);
     const bPoints = getPlayerPoints(b);
-
-    if (aPoints !== bPoints) {
-      return bPoints - aPoints;
-    }
-
-    return a.name.localeCompare(b.name);
+    return bPoints - aPoints;
   });
 
   // Hide inactive players for non-admins; show greyscale for admins
@@ -366,16 +320,16 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-20 h-28 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
+                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
                       <img
-                        src={player.full_body_url || player.image_url || player.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`}
+                        src={player.full_body_url || getPlayerImageWithFallback(player.name, 'body')}
                         alt={player.name}
-                        className="w-full h-auto object-cover scale-150 -translate-y-4"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
+                          // Fallback to head render if full body render fails
                           const target = e.target as HTMLImageElement;
-                          const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`;
-                          if (target.src !== fallbackUrl) {
-                            target.src = fallbackUrl;
+                          if (target.src !== getPlayerImageWithFallback(player.name, 'head')) {
+                            target.src = getPlayerImageWithFallback(player.name, 'head');
                           }
                         }}
                       />
