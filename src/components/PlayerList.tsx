@@ -192,14 +192,22 @@ const PlayerList: React.FC = () => {
     (player?.peakTiers ?? player?.peaktiers ?? {}) as Record<string, TierType>;
 
   // ✅ CHANGE #2: Tier priority ordering for badges in "overall"
-  const tierPriority = (tier: TierType) => {
-    const m = String(tier).match(/^(HT|LT)(\d+)$/);
-    if (!m) return 9999; // unknown/unranked/retired formats go last
-    const type = m[1]; // HT | LT
-    const num = parseInt(m[2], 10); // 1..N
-    // priority: HT1, LT1, HT2, LT2, ...
-    return num * 10 + (type === 'HT' ? 0 : 1);
-  };
+ const tierPriority = (tier: TierType) => {
+  const m = String(tier).match(/^(R)?(HT|LT)(\d+)$/);
+  if (!m) return 9999;
+
+  const isRetired = !!m[1]; // R
+  const type = m[2];       // HT | LT
+  const num = parseInt(m[3], 10);
+
+  // Active tiers first, retired tiers later
+  // Within each group: HT before LT, lower tier number first
+  const basePriority =
+    num * 10 +
+    (type === 'HT' ? 0 : 1);
+
+  return isRetired ? 1000 + basePriority : basePriority;
+};
 
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
