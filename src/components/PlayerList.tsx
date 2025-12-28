@@ -349,7 +349,7 @@ const PlayerList: React.FC = () => {
       h-auto
       object-cover
       scale-130
-      -translate-y-4
+      -translate-y-3
       origin-top
     "
     onError={(e) => {
