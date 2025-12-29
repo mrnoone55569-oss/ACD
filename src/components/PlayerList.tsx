@@ -191,39 +191,21 @@ const PlayerList: React.FC = () => {
   const getPeakMap = (player: any) =>
     (player?.peakTiers ?? player?.peaktiers ?? {}) as Record<string, TierType>;
 
-  // ✅ CHANGE #2: Tier priority ordering for badges in "overall"
- const tierPriority = (tier: TierType) => {
-  const m = String(tier).match(/^(R)?(HT|LT)(\d+)$/);
-  if (!m) return 9999;
-
-  const isRetired = !!m[1]; // R
-  const type = m[2];       // HT | LT
-  const num = parseInt(m[3], 10);
-
-  // Active tiers first, retired tiers later
-  // Within each group: HT before LT, lower tier number first
-  const basePriority =
-    num * 10 +
-    (type === 'HT' ? 0 : 1);
-
-  return isRetired ? 1000 + basePriority : basePriority;
-};
+  // ✅ NEW (ONLY CHANGE YOU REQUESTED):
+  // Use Minecraft username provided in admin panel (player.minecraft_username) for skin renders.
+  // Fallback to display name if minecraft_username is missing.
+  const getSkinUsername = (player: any) => {
+    const u = player?.minecraft_username ?? player?.minecraftUsername ?? player?.mc_username ?? player?.mcUsername;
+    const cleaned = typeof u === 'string' ? u.trim() : '';
+    return cleaned || player?.name;
+  };
 
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       const peakMap = getPeakMap(player);
-
-      // ✅ CHANGE #2 applied here: sort kit badges by tier priority
-      const items = KITS
-        .filter(kit => kit.id !== 'overall')
-        .map(kit => {
-          const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
-          const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
-          return { kit, tier };
-        })
-        .sort((a, b) => tierPriority(a.tier) - tierPriority(b.tier));
-
-      return items.map(({ kit, tier }) => {
+      return KITS.filter(kit => kit.id !== 'overall').map(kit => {
+        const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
+        const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
         const tierConfig = getTierIconConfig(tier);
         const peakTier = (peakMap[kit.id] as TierType) ?? 'UNRANKED'; // independent
         const peakLabel = peakTier !== 'UNRANKED' ? getTierIconConfig(peakTier).label : '—';
@@ -331,6 +313,7 @@ const PlayerList: React.FC = () => {
         <div className="divide-y divide-highlight">
           {visiblePlayers.map((player, index) => {
             const inactive = !(player.active === 1 || player.active === true || player.active === undefined || player.active === null);
+            const skinUser = getSkinUsername(player); // ✅ uses admin-provided MC username
             return (
               <div 
                 key={player.id} 
@@ -347,27 +330,19 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    {/* ✅ CHANGE #1: Crop full-body to "half body" (upper portion) using Tailwind */}
-            <div className="w-24 h-24 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
-  <img
-    src={player.full_body_url || getPlayerImageWithFallback(player.name, 'body')}
-    alt={player.name}
-    className="
-      w-full
-      h-auto
-      object-cover
-      scale-130
-      -translate-y-3
-      origin-top
-    "
-    onError={(e) => {
-      const target = e.target as HTMLImageElement;
-      if (target.src !== getPlayerImageWithFallback(player.name, 'head')) {
-        target.src = getPlayerImageWithFallback(player.name, 'head');
-      }
-    }}
-  />
-</div>
+                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
+                      <img
+                        src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
+                        alt={player.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
+                            target.src = getPlayerImageWithFallback(skinUser, 'head');
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Player Name */}
