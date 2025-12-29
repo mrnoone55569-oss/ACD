@@ -330,7 +330,7 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-<div className="w-24 h-27 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+<div className="w-24 h-28 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
   <img
     src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
     alt={player.name}
