@@ -9,7 +9,6 @@ import { getKitIcon } from '../config/kits';
 import { KitId, TierType } from '../types';
 import TierSelector from './TierSelector';
 import TierIcon from './TierIcon';
-import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 // services
 import { setCurrentTier, setPeakTier } from '../services/playerPersistence';
@@ -28,13 +27,6 @@ const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(
 // tolerate either camelCase or lowercase from the store
 const pickPeakMap = (p: any) =>
   ((p?.peakTiers ?? p?.peaktiers) ?? {}) as Record<string, TierType>;
-
-// Get Minecraft username for skin rendering (matches PlayerList logic)
-const getSkinUsername = (player: any) => {
-  const u = player?.minecraft_username ?? player?.minecraftUsername ?? player?.mc_username ?? player?.mcUsername;
-  const cleaned = typeof u === 'string' ? u.trim() : '';
-  return cleaned || player?.name;
-};
 
 const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose }) => {
   const { players } = usePlayerStore();
@@ -212,18 +204,11 @@ const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({ playerId, onClose
         {/* Header */}
         <div className="sticky top-0 bg-base-dark rounded-t-2xl p-6 border-b border-highlight flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-24 h-24 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg">
               <img
-                src={player.full_body_url || getPlayerImageWithFallback(getSkinUsername(player), 'body')}
+                src={player.image_url || (player as any).avatar || `https://ui-avatars.com/api/?name=${player.name}&background=random`}
                 alt={player.name}
-                className="w-full h-auto object-cover scale-[1.3] -translate-y-3 origin-top"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  const skinUser = getSkinUsername(player);
-                  if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
-                    target.src = getPlayerImageWithFallback(skinUser, 'head');
-                  }
-                }}
+                className="w-full h-full object-cover"
               />
             </div>
             <div>
