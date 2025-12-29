@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { useToast } from './ToastContainer';
 import { createPlayer } from '../services/playerAdmin';
+import { getPlayerImageWithFallback } from '../utils/minecraftSkin';
 
 interface PlayerFormModalProps {
   isOpen: boolean;
@@ -14,7 +15,8 @@ interface PlayerFormModalProps {
     name: string,
     imageUrl: string,
     active: boolean,
-    fullBodyUrl?: string
+    fullBodyUrl?: string,
+    minecraftUsername?: string
   ) => Promise<{ success: boolean; error?: string }>;
   title: string;
   successMessage: string;
@@ -22,6 +24,7 @@ interface PlayerFormModalProps {
     name: string;
     image_url: string;
     full_body_url?: string;
+    minecraft_username?: string;
     active: boolean;
   };
 }
@@ -35,6 +38,7 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
   initial
 }) => {
   const [name, setName] = useState('');
+  const [minecraftUsername, setMinecraftUsername] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [fullBodyUrl, setFullBodyUrl] = useState('');
   const [active, setActive] = useState(true);
@@ -44,11 +48,13 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
   useEffect(() => {
     if (initial) {
       setName(initial.name || '');
+      setMinecraftUsername((initial.minecraft_username || '').toString());
       setImageUrl(initial.image_url || '');
       setFullBodyUrl(initial.full_body_url || '');
       setActive(initial.active ?? true);
     } else {
       setName('');
+      setMinecraftUsername('');
       setImageUrl('');
       setFullBodyUrl('');
       setActive(true);
@@ -56,6 +62,8 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
   }, [initial, isOpen]);
 
   if (!isOpen) return null;
+
+  const skinUser = (minecraftUsername || name).trim();
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -67,8 +75,8 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
 
     // Prefer passed-in handler if supplied; otherwise use our Supabase service
     const result = onSubmit
-      ? await onSubmit(name, imageUrl, active, fullBodyUrl)
-      : await createPlayer(name, imageUrl, active, fullBodyUrl);
+      ? await onSubmit(name, imageUrl, active, fullBodyUrl, minecraftUsername)
+      : await createPlayer(name, imageUrl, active, fullBodyUrl, minecraftUsername);
 
     if (result.success) {
       showToast({ type: 'success', title: successMessage, message: name });
@@ -93,20 +101,58 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
             <X size={20} />
           </button>
         </div>
+
+        {/* ✅ Preview (cropped same as list) */}
+        <div className="px-6 pt-6">
+          <div className="flex items-center gap-4">
+            <div className="w-24 h-24 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+              <img
+                src={fullBodyUrl || getPlayerImageWithFallback(skinUser, 'body')}
+                alt={name || 'player'}
+                className="w-full h-auto object-cover scale-130 -translate-y-3 origin-top"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = getPlayerImageWithFallback(skinUser, 'head');
+                }}
+              />
+            </div>
+            <div className="flex flex-col">
+              <div className="text-text-primary font-semibold text-lg">{name || 'Preview'}</div>
+              <div className="text-text-muted text-sm font-mono">
+                Skin user: {minecraftUsername?.trim() || '(falls back to name)'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">Name</label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Display Name</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full bg-base-dark border border-highlight rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30 placeholder-text-muted"
-              placeholder="Player name"
+              placeholder="Player name (shown on site)"
               disabled={loading}
             />
           </div>
+
+          {/* ✅ NEW field: Minecraft Username (used for skin) */}
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">Image URL</label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Minecraft Username (for skin)</label>
+            <input
+              type="text"
+              value={minecraftUsername}
+              onChange={e => setMinecraftUsername(e.target.value)}
+              className="w-full bg-base-dark border border-highlight rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30 placeholder-text-muted"
+              placeholder="e.g. Notch (used only for skin)"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Image URL (legacy avatar)</label>
             <input
               type="text"
               value={imageUrl}
@@ -116,17 +162,20 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
               disabled={loading}
             />
           </div>
+
+          {/* Keep Full Body URL as optional override */}
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">Full Body URL</label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Full Body URL (optional override)</label>
             <input
               type="text"
               value={fullBodyUrl}
               onChange={e => setFullBodyUrl(e.target.value)}
               className="w-full bg-base-dark border border-highlight rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30 placeholder-text-muted"
-              placeholder="https://example.com/full-body.png"
+              placeholder="Optional direct image URL (if provided overrides username render)"
               disabled={loading}
             />
           </div>
+
           <label className="flex items-center gap-2 text-text-primary">
             <input
               type="checkbox"
@@ -137,6 +186,7 @@ const PlayerFormModal: React.FC<PlayerFormModalProps> = ({
             Active
           </label>
         </div>
+
         <div className="p-6 border-t border-highlight flex gap-3">
           <button
             onClick={onClose}
