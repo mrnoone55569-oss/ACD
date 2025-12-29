@@ -334,7 +334,7 @@ const PlayerList: React.FC = () => {
   <img
     src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
     alt={player.name}
-    className="w-full h-auto object-cover translate-y-3 origin-top"
+    className="w-full h-auto object-cover scale-180 -translate-y-3 origin-top"
     onError={(e) => {
       const target = e.target as HTMLImageElement;
       if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
