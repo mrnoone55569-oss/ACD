@@ -36,15 +36,21 @@ const AdminPanel: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
 
-  const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', active: true });
-  const [editStates, setEditStates] = useState<Record<string, { name: string; image_url: string; active: boolean }>>({});
+  // ✅ UPDATED: include minecraft_username in add/edit scopes (display name separate)
+  const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', minecraft_username: '', active: true });
+  const [editStates, setEditStates] = useState<Record<string, { name: string; image_url: string; minecraft_username: string; active: boolean }>>({});
 
   // Sync the edit states with current players
   useEffect(() => {
-    const initial = players.reduce((acc, p) => ({
+    const initial = players.reduce((acc, p: any) => ({
       ...acc,
-      [p.id]: { name: p.name, image_url: p.image_url || '', active: p.active !== false }
-    }), {} as Record<string, { name: string; image_url: string; active: boolean }>);
+      [p.id]: {
+        name: p.name,
+        image_url: p.image_url || '',
+        minecraft_username: (p.minecraft_username || p.minecraftUsername || '').toString(),
+        active: p.active !== false
+      }
+    }), {} as Record<string, { name: string; image_url: string; minecraft_username: string; active: boolean }>);
     setEditStates(initial);
   }, [players]);
 
@@ -140,16 +146,28 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleAddPlayer = async () => {
-    const result = await addPlayer(newPlayer.name, newPlayer.image_url, newPlayer.active);
+    // ✅ UPDATED: pass minecraft_username through without changing existing behavior
+    const result = await addPlayer(
+      newPlayer.name,
+      newPlayer.image_url,
+      newPlayer.active,
+      undefined,
+      newPlayer.minecraft_username
+    );
+
     if (result.success) {
       showToast({ type: 'success', title: 'Player Added', message: `Added ${newPlayer.name}` });
-      setNewPlayer({ name: '', image_url: '', active: true });
+      setNewPlayer({ name: '', image_url: '', minecraft_username: '', active: true });
     } else {
       showToast({ type: 'error', title: 'Add Failed', message: result.error || 'Failed to add player' });
     }
   };
 
-  const handleEditChange = (id: string, field: 'name' | 'image_url' | 'active', value: string | boolean) => {
+  const handleEditChange = (
+    id: string,
+    field: 'name' | 'image_url' | 'minecraft_username' | 'active',
+    value: string | boolean
+  ) => {
     setEditStates(prev => ({
       ...prev,
       [id]: { ...prev[id], [field]: value }
