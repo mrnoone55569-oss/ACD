@@ -330,19 +330,20 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-                    <div className="w-24 h-32 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-center justify-center">
-                      <img
-                        src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
-                        alt={player.name}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
-                            target.src = getPlayerImageWithFallback(skinUser, 'head');
-                          }
-                        }}
-                      />
-                    </div>
+<div className="w-24 h-24 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+  <img
+    src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
+    alt={player.name}
+    className="w-full h-auto object-cover scale-130 -translate-y-3 origin-top"
+    onError={(e) => {
+      const target = e.target as HTMLImageElement;
+      if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
+        target.src = getPlayerImageWithFallback(skinUser, 'head');
+      }
+    }}
+  />
+</div>
+
                   </div>
 
                   {/* Player Name */}
