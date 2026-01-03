@@ -8,6 +8,7 @@ type DBRow = {
   name: string;
   image_url: string | null;
   avatar: string | null;
+  minecraft_username: string | null;
   kitTiers: any;       // may be {}, null, or 0 (bad)
   peaktiers: any;      // may be {}, null, or 0 (bad)  <-- DB column
   theme: 0 | 1 | null;
@@ -22,7 +23,7 @@ const toTierMap = (v: any): Record<string, TierType> =>
 export async function fetchAllPlayers() {
   const { data, error } = await supabase
     .from('players')
-    .select('id,name,image_url,avatar,active,theme,kitTiers,peaktiers,created_at,updated_at')
+    .select('id,name,image_url,avatar,minecraft_username,active,theme,kitTiers,peaktiers,created_at,updated_at')
     .order('id', { ascending: true });
 
   if (error) throw error;
@@ -32,6 +33,7 @@ export async function fetchAllPlayers() {
     name: r.name,
     image_url: r.image_url ?? '',
     avatar: r.avatar ?? null,
+    minecraft_username: r.minecraft_username ?? null,
     active: r.active ?? 1,
     theme: r.theme ?? 0,
     kitTiers: toTierMap(r.kitTiers),

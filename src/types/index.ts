@@ -15,6 +15,7 @@ export interface Player {
   avatar?: string;
   image_url?: string;
   full_body_url?: string;
+  minecraft_username?: string;
   active?: boolean;
   peakTiers?: Record<KitId, TierType>;
 }

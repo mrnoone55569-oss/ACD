@@ -480,8 +480,8 @@ const PlayerList: React.FC = () => {
         <PlayerFormModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onSubmit={async (name, url, active, fullBodyUrl) => {
-            const res = await createPlayer(name, url, active, fullBodyUrl);
+          onSubmit={async (name, url, active, fullBodyUrl, minecraftUsername) => {
+            const res = await createPlayer(name, url, active, fullBodyUrl, minecraftUsername);
             if (res.success) await refresh();
             return res;
           }}
@@ -495,8 +495,8 @@ const PlayerList: React.FC = () => {
         <PlayerFormModal
           isOpen={!!editPlayerId}
           onClose={() => setEditPlayerId(null)}
-          onSubmit={async (name, url, active, fullBodyUrl) => {
-            const res = await updatePlayerBasics(editPlayerId, { name, image_url: url, full_body_url: fullBodyUrl, active });
+          onSubmit={async (name, url, active, fullBodyUrl, minecraftUsername) => {
+            const res = await updatePlayerBasics(editPlayerId, { name, image_url: url, full_body_url: fullBodyUrl, minecraft_username: minecraftUsername, active });
             if (res.success) await refresh();
             return res;
           }}
@@ -506,6 +506,7 @@ const PlayerList: React.FC = () => {
             name: players.find(p => p.id === editPlayerId)?.name || '',
             image_url: players.find(p => p.id === editPlayerId)?.image_url || '',
             full_body_url: players.find(p => p.id === editPlayerId)?.full_body_url || '',
+            minecraft_username: players.find(p => p.id === editPlayerId)?.minecraft_username || '',
             active: players.find(p => p.id === editPlayerId)?.active !== 0 && players.find(p => p.id === editPlayerId)?.active !== false,
           }}
         />
