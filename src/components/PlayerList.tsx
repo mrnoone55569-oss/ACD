@@ -200,10 +200,45 @@ const PlayerList: React.FC = () => {
     return cleaned || player?.name;
   };
 
+  // ✅ ONLY FIX: Tier arrangement order in "overall" view
+  // Active tiers first: HT1, LT1, HT2, LT2, ... HT5, LT5
+  // Then retired tiers: RHT1, RLT1, ... RHT5, RLT5
+  // Also normalizes casing (ht1 vs HT1) to avoid "messed up" sorting.
+  const TIER_PRIORITY: Record<string, number> = (() => {
+    const order: string[] = [];
+    for (let i = 1; i <= 5; i++) order.push(`HT${i}`, `LT${i}`);
+    for (let i = 1; i <= 5; i++) order.push(`RHT${i}`, `RLT${i}`);
+    order.push('UNRANKED');
+    const map: Record<string, number> = {};
+    order.forEach((t, idx) => (map[t] = idx));
+    return map;
+  })();
+
+  const normalizeTier = (t?: TierType) =>
+    (typeof t === 'string' ? (t.toUpperCase() as TierType) : t);
+
+  const tierRank = (t?: TierType) => {
+    const n = normalizeTier(t);
+    if (!n) return 9999;
+    return TIER_PRIORITY[n] ?? 9999;
+  };
+
   const renderKitTiers = (player: typeof filteredPlayers[0]) => {
     if (activeKit === 'overall') {
       const peakMap = getPeakMap(player);
-      return KITS.filter(kit => kit.id !== 'overall').map(kit => {
+
+      // ✅ sort kits by the tier priority (THIS is the only behavior change)
+      const kitsSorted = KITS.filter(kit => kit.id !== 'overall')
+        .slice()
+        .sort((a, b) => {
+          const aOriginal = (player.kitTiers?.[a.id as KitId] as TierType) || 'UNRANKED';
+          const bOriginal = (player.kitTiers?.[b.id as KitId] as TierType) || 'UNRANKED';
+          const aTier = effectiveTier(player.id, a.id as KitId, aOriginal);
+          const bTier = effectiveTier(player.id, b.id as KitId, bOriginal);
+          return tierRank(aTier) - tierRank(bTier);
+        });
+
+      return kitsSorted.map(kit => {
         const originalTier = (player.kitTiers?.[kit.id as KitId] as TierType) || 'UNRANKED';
         const tier = effectiveTier(player.id, kit.id as KitId, originalTier);
         const tierConfig = getTierIconConfig(tier);
@@ -330,23 +365,19 @@ const PlayerList: React.FC = () => {
                   
                   {/* Player Avatar */}
                   <div className="flex-shrink-0">
-<div className="w-24 h-28 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
-  <img
-    src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
-    alt={player.name}
-    className="w-full h-auto object-cover origin-top relative -top-[2px]"
-    onError={(e) => {
-      const target = e.target as HTMLImageElement;
-      if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
-        target.src = getPlayerImageWithFallback(skinUser, 'head');
-      }
-    }}
-  />
-</div>
-
-
-
-
+                    <div className="w-24 h-28 rounded-xl overflow-hidden bg-base-dark border-2 border-highlight shadow-lg flex items-start justify-center">
+                      <img
+                        src={player.full_body_url || getPlayerImageWithFallback(skinUser, 'body')}
+                        alt={player.name}
+                        className="w-full h-auto object-cover origin-top relative -top-[2px]"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== getPlayerImageWithFallback(skinUser, 'head')) {
+                            target.src = getPlayerImageWithFallback(skinUser, 'head');
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Player Name */}
