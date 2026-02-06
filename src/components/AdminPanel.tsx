@@ -4,15 +4,15 @@ import { usePlayerStore } from '../store/playerStore';
 import { useThemeStore } from '../store/themeStore';
 import { insertInitialPlayers } from '../utils/playerMigration';
 
-import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save } from 'lucide-react';
+import { AlertCircle, Check, Crown, Trash2, Target, Globe, AlertTriangle, Plus, Save, Calendar } from 'lucide-react';
 
 import { KITS } from '../config/kits';
 import { KitId } from '../types';
 import ResetConfirmModal from './ResetConfirmModal';
 import { useToast } from './ToastContainer';
 
-// NEW: theme persistence helpers
 import { fetchGlobalTheme, saveGlobalTheme } from '../services/themePersistence';
+import { createTournament } from '../services/tournamentService';
 
 const AdminPanel: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
@@ -25,16 +25,20 @@ const AdminPanel: React.FC = () => {
     error?: string;
     success?: boolean;
   }>({ loading: false });
-  
+
   const [resetModal, setResetModal] = useState<{
     isOpen: boolean;
     type: 'kit' | 'global';
     kitId?: KitId;
     kitName?: string;
   }>({ isOpen: false, type: 'kit' });
-  
+
   const [isResetting, setIsResetting] = useState(false);
   const [selectedKit, setSelectedKit] = useState<KitId | ''>('');
+
+  const [tournamentName, setTournamentName] = useState('');
+  const [tournamentDate, setTournamentDate] = useState('');
+  const [creatingTournament, setCreatingTournament] = useState(false);
 
   // ✅ UPDATED: include minecraft_username in add/edit scopes (display name separate)
   const [newPlayer, setNewPlayer] = useState({ name: '', image_url: '', minecraft_username: '', active: true });
@@ -183,7 +187,6 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  // NEW: Persist theme and reflect immediately in UI
   const applyTheme = async (val: 0 | 1) => {
     try {
       const affected = await saveGlobalTheme(val);
@@ -202,6 +205,37 @@ const AdminPanel: React.FC = () => {
         message: err?.message || 'Could not update theme'
       });
     }
+  };
+
+  const handleCreateTournament = async () => {
+    if (!tournamentName.trim() || !tournamentDate) {
+      showToast({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fill in tournament name and date'
+      });
+      return;
+    }
+
+    setCreatingTournament(true);
+    const result = await createTournament(tournamentName, tournamentDate);
+
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Tournament Created',
+        message: `${tournamentName} created successfully`
+      });
+      setTournamentName('');
+      setTournamentDate('');
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Tournament Creation Failed',
+        message: result.error || 'Failed to create tournament'
+      });
+    }
+    setCreatingTournament(false);
   };
 
   return (
@@ -241,6 +275,54 @@ const AdminPanel: React.FC = () => {
               }`}
             >
               ❄️ Winter Theme
+            </button>
+          </div>
+        </div>
+
+        {/* Tournament Management Section */}
+        <div className="mb-8 p-4 bg-base-dark rounded-xl border border-highlight/30">
+          <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
+            <Calendar size={18} className="mr-2 text-accent-primary" />
+            Tournament Management
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Tournament Name</label>
+              <input
+                type="text"
+                value={tournamentName}
+                onChange={e => setTournamentName(e.target.value)}
+                placeholder="e.g. Spring Championship"
+                className="w-full bg-base-darker border border-highlight rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30"
+                disabled={creatingTournament}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Tournament Date</label>
+              <input
+                type="date"
+                value={tournamentDate}
+                onChange={e => setTournamentDate(e.target.value)}
+                className="w-full bg-base-darker border border-highlight rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/30"
+                disabled={creatingTournament}
+              />
+            </div>
+            <button
+              onClick={handleCreateTournament}
+              disabled={creatingTournament}
+              className="w-full px-4 py-2 rounded-lg bg-accent-gradient text-white font-semibold hover:shadow-accent-glow transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {creatingTournament ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  Create Tournament
+                </>
+              )}
             </button>
           </div>
         </div>
