@@ -5,7 +5,6 @@ import PlayerList from './components/PlayerList';
 import StatsSummary from './components/StatsSummary';
 import Logo from './components/Logo';
 import AdminPanel from './components/AdminPanel';
-import Leaderboard from './components/Leaderboard';
 import { ToastProvider } from './components/ToastContainer';
 import { usePlayerStore } from './store/playerStore';
 import { useThemeStore } from './store/themeStore';
@@ -48,17 +47,16 @@ function App() {
             <Logo />
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-game font-bold mb-2 text-center md:text-left text-text-primary">
-                ACD Tier List & ELO Rankings
+                ACD Tier List Rankings
               </h1>
               <p className="text-text-secondary max-w-2xl text-center md:text-left">
-                Track your tier rankings and compete in tournament-style ELO battles
+                view your tiers and other players tiers
               </p>
             </div>
           </div>
           
           <AdminPanel />
           <StatsSummary />
-          <Leaderboard />
           <KitSelector />
           <PlayerList />
         </main>
